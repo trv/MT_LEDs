@@ -23,7 +23,7 @@ OBJCOPY=arm-none-eabi-objcopy
 OBJDUMP=arm-none-eabi-objdump
 SIZE=arm-none-eabi-size
 
-CFLAGS  = -Wall -g -std=gnu99 -Os
+CFLAGS  = -Wall -g -std=gnu99 -Og
 CFLAGS += -DSTM32L433xx -DUSE_FULL_LL_DRIVER 
 CFLAGS += -mlittle-endian -mcpu=cortex-m4  -mthumb
 CFLAGS += -ffunction-sections -fdata-sections

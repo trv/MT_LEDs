@@ -31,7 +31,7 @@ void Power_Config(void)
 
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 
-    // PC13: WKUP2 (accel int 2)
+    // PC13: WKUP2 (accel int 2) - also button on dev board
     LL_PWR_SetWakeUpPinPolarityLow(LL_PWR_WAKEUP_PIN2);
     LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN2);
 
@@ -69,6 +69,44 @@ void LED_Config(void)
     LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
+static uint8_t who_am_i = 0;
+void I2C3_Config(void)
+{
+    LL_I2C_InitTypeDef i2cConfig;
+    LL_GPIO_InitTypeDef gpioConfig;
+
+    // I2C3: SCL = PA7, SDA = PB4
+    LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
+    LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+
+    LL_GPIO_StructInit(&gpioConfig);
+    gpioConfig.Pin = LL_GPIO_PIN_7;
+    gpioConfig.Speed = LL_GPIO_SPEED_FREQ_LOW;
+    gpioConfig.Mode = LL_GPIO_MODE_ALTERNATE;
+    gpioConfig.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+    gpioConfig.Alternate = LL_GPIO_AF_4;
+
+    // do we need internal pull--ups?
+
+    LL_GPIO_Init(GPIOA, &gpioConfig);
+
+    gpioConfig.Pin = LL_GPIO_PIN_4;
+    LL_GPIO_Init(GPIOB, &gpioConfig);
+
+    LL_I2C_StructInit(&i2cConfig);
+    i2cConfig.Timing = 0x30A54E69;     // 300ns rise, 300ns fall, 400kHz speed:
+    //0x00D00E28;  /* (Rise time = 120ns, Fall time = 25ns) */
+    
+    LL_I2C_Init(I2C3, &i2cConfig);
+
+    LL_I2C_HandleTransfer(I2C3, 0x19, LL_I2C_ADDRSLAVE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_WRITE);
+    LL_I2C_TransmitData8(I2C3, 0x0F);
+    while (LL_I2C_IsActiveFlag_BUSY(I2C3));
+    LL_I2C_HandleTransfer(I2C3, 0x19, LL_I2C_ADDRSLAVE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
+    while (!LL_I2C_IsActiveFlag_RXNE(I2C3));
+    who_am_i = LL_I2C_ReceiveData8(I2C3);
+}
+
 int main(void){
 
     /* Configure the system clock */
@@ -77,6 +115,8 @@ int main(void){
     Power_Config();
 
     LED_Config();
+
+    //I2C3_Config();
  
     LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
     LL_mDelay(500);
@@ -84,7 +124,7 @@ int main(void){
     LL_mDelay(10);
 
     // go to stop mode
-    __WFI();
+    //__WFI();
 
     /* loop forever */
     while(1);

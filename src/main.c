@@ -69,7 +69,7 @@ void LED_Config(void)
     LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
-static uint8_t who_am_i = 0;
+static volatile uint8_t who_am_i = 0;
 void I2C3_Config(void)
 {
     LL_I2C_InitTypeDef i2cConfig;
@@ -78,11 +78,14 @@ void I2C3_Config(void)
     // I2C3: SCL = PA7, SDA = PB4
     LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
     LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C3);
+
 
     LL_GPIO_StructInit(&gpioConfig);
     gpioConfig.Pin = LL_GPIO_PIN_7;
     gpioConfig.Speed = LL_GPIO_SPEED_FREQ_LOW;
     gpioConfig.Mode = LL_GPIO_MODE_ALTERNATE;
+    gpioConfig.Pull = LL_GPIO_PULL_UP;
     gpioConfig.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
     gpioConfig.Alternate = LL_GPIO_AF_4;
 
@@ -99,11 +102,11 @@ void I2C3_Config(void)
     
     LL_I2C_Init(I2C3, &i2cConfig);
 
-    LL_I2C_HandleTransfer(I2C3, 0x19, LL_I2C_ADDRSLAVE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_WRITE);
+    LL_I2C_HandleTransfer(I2C3, 0x30, LL_I2C_ADDRSLAVE_7BIT, 1, LL_I2C_MODE_SOFTEND, LL_I2C_GENERATE_START_WRITE);
     LL_I2C_TransmitData8(I2C3, 0x0F);
-    while (LL_I2C_IsActiveFlag_BUSY(I2C3));
-    LL_I2C_HandleTransfer(I2C3, 0x19, LL_I2C_ADDRSLAVE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
-    while (!LL_I2C_IsActiveFlag_RXNE(I2C3));
+    while (!LL_I2C_IsActiveFlag_TC(I2C3));
+    LL_I2C_HandleTransfer(I2C3, 0x30, LL_I2C_ADDRSLAVE_7BIT, 1, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
+    while (!LL_I2C_IsActiveFlag_RXNE(I2C3) && !LL_I2C_IsActiveFlag_NACK(I2C3) && !LL_I2C_IsActiveFlag_STOP(I2C3));
     who_am_i = LL_I2C_ReceiveData8(I2C3);
 }
 
@@ -116,7 +119,7 @@ int main(void){
 
     LED_Config();
 
-    //I2C3_Config();
+    I2C3_Config();
  
     LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
     LL_mDelay(500);

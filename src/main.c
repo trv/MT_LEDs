@@ -24,44 +24,59 @@ void SystemClock_Config(void){
     LL_Init1msTick(SystemCoreClock);
 }
 
-int main(void){
-
-    /* Configure the system clock */
-    SystemClock_Config();
-
+void Power_Config(void)
+{
     /* Enable clock for SYSCFG */
     LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
 
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
 
-    // Configure PC13 as WKUP2
+    // PC13: WKUP2 (accel int 2)
     LL_PWR_SetWakeUpPinPolarityLow(LL_PWR_WAKEUP_PIN2);
     LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN2);
+
+    // PA0: Accel interrupt 1
+    LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN1);
+    
+    // PA2: Charger PG interrupt
+    LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN4);
 
     // set STANDBY as low power mode
     LL_PWR_SetPowerMode(LL_PWR_MODE_STANDBY);
     LL_LPM_EnableDeepSleep();
 
     LL_PWR_ClearFlag_SB();
+    LL_PWR_ClearFlag_WU1();
     LL_PWR_ClearFlag_WU2();
+    LL_PWR_ClearFlag_WU4();
     LL_PWR_DisableInternWU();
+}
 
-    /* Let's pick a pin and toggle it */
-
+void LED_Config(void)
+{
     /* Use a structure for this (usually for bulk init), you can also use LL functions */   
     LL_GPIO_InitTypeDef GPIO_InitStruct;
     
-    /* Enable the GPIO clock for GPIOA*/
+    /* Enable the GPIO clock for GPIO */
     LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
 
+    /* Set up port parameters */
+    LL_GPIO_StructInit(&GPIO_InitStruct);
+    GPIO_InitStruct.Pin = LL_GPIO_PIN_13;
+    GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
+    GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
+    GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+    LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+}
 
-    /* Set up port A parameters */
-    LL_GPIO_StructInit(&GPIO_InitStruct);                   // init the struct with some sensible defaults 
-    GPIO_InitStruct.Pin = LL_GPIO_PIN_13;                    // GPIO pin 5; on Nucleo there is an LED
-    GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;         // output speed
-    GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;             // set as output 
-    GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;   // make it a push pull
-    LL_GPIO_Init(GPIOB, &GPIO_InitStruct);                  // initialize PORT A
+int main(void){
+
+    /* Configure the system clock */
+    SystemClock_Config();
+
+    Power_Config();
+
+    LED_Config();
  
     LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
     LL_mDelay(500);
@@ -71,12 +86,8 @@ int main(void){
     // go to stop mode
     __WFI();
 
-
-    /* Toggle forever */
-    while(1){
-        LL_mDelay(250);
-        LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_13);
-    }
+    /* loop forever */
+    while(1);
 
     return 0;
 }

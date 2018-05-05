@@ -1,6 +1,6 @@
-# stm32-minimal-l4
-For this particular project, you also need the STM32CubeL4:
 
-http://www.st.com/content/st_com/en/products/embedded-software/mcus-embedded-software/stm32-embedded-software/stm32cube-mcu-packages/stm32cubel4.html
 
-and extract the content of the Drivers/ directory of this archive to the one in this project.
+changes for real board:
+
+1. remove internal pull-ups on I2C
+2. swap `ACCEL_INT2` and `LIPO_PG` back to the right pins (user button on dev kit is connected to PC13, so use that to simulate battery charger for now). 

@@ -1,6 +1,6 @@
 # put your *.o targets here, make should handle the rest!
 
-SRCS = system_stm32l4xx.c main.c accel.c
+SRCS = system_stm32l4xx.c main.c i2c.c accel.c led.c 
 OBJ = $(SRCS:.c=.o)
 
 # all the files will be generated with this name (main.elf, main.bin, main.hex, etc)
@@ -58,7 +58,7 @@ proj: 	$(OUT_DIR)/$(PROJ_NAME).elf
 	$(CC) $(CFLAGS) -c -o src/$@ $<
 
 $(LL_LIB)/libll.a:
-	cd $(LL_LIB) && make
+	cd $(LL_LIB) && make	
 
 $(OUT_DIR)/$(PROJ_NAME).elf: $(SRCS) $(LL_LIB)/libll.a
 	mkdir -p $(OUT_DIR)

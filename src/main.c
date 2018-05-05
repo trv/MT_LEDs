@@ -3,7 +3,9 @@
 #include "stm32l4xx.h"
 #include "stm32l4xx_conf.h"
 
+#include "i2c.h"
 #include "accel.h"
+#include "led.h"
 
 void SystemClock_Config(void){
 
@@ -136,11 +138,21 @@ void I2C1_Config(void)
     gpioConfig.Pin = LL_GPIO_PIN_10;
     LL_GPIO_Init(GPIOA, &gpioConfig);
 
+    // configure SHDN pin while we're here
+    gpioConfig.Pin = LL_GPIO_PIN_12;
+    gpioConfig.Speed = LL_GPIO_SPEED_LOW;
+    gpioConfig.Mode = LL_GPIO_MODE_OUTPUT;
+    gpioConfig.Pull = LL_GPIO_PULL_NO;
+    gpioConfig.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+    gpioConfig.Alternate = LL_GPIO_AF_0;
+    LL_GPIO_Init(GPIOA, &gpioConfig);
+
+
     LL_I2C_StructInit(&i2cConfig);
     i2cConfig.Timing = 0x00B11024;
     //0x00D00E28;  /* (Rise time = 120ns, Fall time = 25ns) */
     
-    LL_I2C_Init(I2C3, &i2cConfig);
+    LL_I2C_Init(I2C1, &i2cConfig);
 }
 
 int main(void)
@@ -157,7 +169,7 @@ int main(void)
     I2C3_Config();
 
     if (powerStatus & LL_PWR_SR1_WUF4) {
-        accel_read(0x39, &clickSrc, 1);
+        i2c_read(I2C3, 0x39, &clickSrc, 1);
     }
 
     accel_config_awake();
@@ -167,7 +179,7 @@ int main(void)
         LL_mDelay(100);
         LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
         LL_mDelay(100);
-        accel_read(0x39, &clickSrc, 1);
+        i2c_read(I2C3, 0x39, &clickSrc, 1);
         if (clickSrc & 0x40) {
         	// interrupt active
             accel_config_asleep();

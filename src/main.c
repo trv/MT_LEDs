@@ -30,12 +30,11 @@ void SystemClock_Config(void){
 
 uint32_t Power_Config(void)
 {
-    uint32_t status = PWR->SR1;
-
     /* Enable clock for SYSCFG */
     LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
 
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
+    uint32_t status = PWR->SR1;
 
     // PC13: WKUP2 (accel int 2) - also button on dev board
     LL_PWR_SetWakeUpPinPolarityLow(LL_PWR_WAKEUP_PIN2);
@@ -77,7 +76,6 @@ void LED_Config(void)
     LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
-static volatile uint8_t who_am_i = 0;
 void I2C3_Config(void)
 {
     LL_I2C_InitTypeDef i2cConfig;
@@ -109,7 +107,40 @@ void I2C3_Config(void)
     //0x00D00E28;  /* (Rise time = 120ns, Fall time = 25ns) */
     
     LL_I2C_Init(I2C3, &i2cConfig);
+}
 
+void I2C1_Config(void)
+{
+    LL_I2C_InitTypeDef i2cConfig;
+    LL_GPIO_InitTypeDef gpioConfig;
+
+    // I2C3: SCL = PA9, SDA = PA10
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
+    LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
+    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C1);
+
+    LL_SYSCFG_EnableFastModePlus(LL_SYSCFG_I2C_FASTMODEPLUS_I2C1);
+
+    LL_GPIO_StructInit(&gpioConfig);
+    gpioConfig.Pin = LL_GPIO_PIN_9;
+    gpioConfig.Speed = LL_GPIO_SPEED_HIGH;
+    gpioConfig.Mode = LL_GPIO_MODE_ALTERNATE;
+    gpioConfig.Pull = LL_GPIO_PULL_UP;
+    gpioConfig.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+    gpioConfig.Alternate = LL_GPIO_AF_4;
+
+    // do we need internal pull--ups?
+
+    LL_GPIO_Init(GPIOA, &gpioConfig);
+
+    gpioConfig.Pin = LL_GPIO_PIN_10;
+    LL_GPIO_Init(GPIOA, &gpioConfig);
+
+    LL_I2C_StructInit(&i2cConfig);
+    i2cConfig.Timing = 0x00B11024;
+    //0x00D00E28;  /* (Rise time = 120ns, Fall time = 25ns) */
+    
+    LL_I2C_Init(I2C3, &i2cConfig);
 }
 
 int main(void)

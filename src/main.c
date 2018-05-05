@@ -5,6 +5,8 @@
 
 void SystemClock_Config(void){
 
+    LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_FLASH);
+    MODIFY_REG(FLASH->ACR, FLASH_ACR_LATENCY, (FLASH_ACR_LATENCY_4WS));
     /* Clock init stuff */ 
     
     LL_UTILS_PLLInitTypeDef sUTILS_PLLInitStruct = {
@@ -38,7 +40,7 @@ uint32_t Power_Config(void)
     LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN2);
 
     // PA0: Accel interrupt 1
-    LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN1);
+    //LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN1);
     
     // PA2: Charger PG interrupt
     LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN4);
@@ -125,7 +127,7 @@ void accel_config(void)
     accel_write(0x20, accel_config, 6);
 
     uint8_t click_config[] = {
-    		0x3F,		// CLICK_CFG = enable single and double tap on XYZ
+    		0x3F,		// CLICK_CFG = enable single and double tap on XYZ (0x3F)
 			0x00,		// read-only CLICK_SRC
 			0x08,		// CLICK_THS = threshold
 			0x08,		// TIME_LIMIT
@@ -169,7 +171,9 @@ void accel_read(uint8_t subAddr, uint8_t *data, size_t len)
 }
 
 
-int main(void){
+int main(void)
+{
+    uint8_t clickSrc;
 
     /* Configure the system clock */
     SystemClock_Config();
@@ -182,15 +186,12 @@ int main(void){
 
     if (!(powerStatus & PWR_SR1_SBF)) {
         accel_config();
+    } else if (powerStatus & LL_PWR_SR1_WUF4) {
+        accel_read(0x39, &clickSrc, 1);
     }
- 
-    LL_mDelay(10);
-    uint8_t ctrlData[8] = {0};
-    accel_read(0x20, ctrlData, 8);
 
-	//accel_read(0x28, ctrlData, 6);	// read values
 	LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
-	LL_mDelay(100);
+	LL_mDelay(500);
 	LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
 	LL_mDelay(10);
 

@@ -62,6 +62,9 @@ defined in linker script */
 /* end address for the .bss section. defined in linker script */
 .word	_ebss
 
+lconfig:
+.word	0x40022000
+
 .equ  BootRAM,        0xF1E0F85F
 /**
  * @brief  This is the code that gets called when the processor first
@@ -79,10 +82,17 @@ Reset_Handler:
   ldr   sp, =_estack    /* Atollic update: set stack pointer */
 
 /* Copy the data segment initializers from flash to SRAM */
+  ldr     r2, =lconfig
+  ldr     r2, [r2, #0]
+  ldr     r3, [r2, #0]
+  bic.w   r3, r3, #7
+  orr.w   r3, r3, #4
+  str     r3, [r2, #0]
   movs	r1, #0
   b	LoopCopyDataInit
 
 CopyDataInit:
+	ldr	r3, =_sidata
 	ldr	r3, =_sidata
 	ldr	r3, [r3, r1]
 	str	r3, [r0, r1]
@@ -90,6 +100,7 @@ CopyDataInit:
 
 LoopCopyDataInit:
 	ldr	r0, =_sdata
+	ldr	r3, =_edata
 	ldr	r3, =_edata
 	adds	r2, r0, r1
 	cmp	r2, r3

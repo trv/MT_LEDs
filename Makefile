@@ -57,7 +57,10 @@ proj: 	$(OUT_DIR)/$(PROJ_NAME).elf
 %.o: %.c
 	$(CC) $(CFLAGS) -c -o src/$@ $<
 
-$(OUT_DIR)/$(PROJ_NAME).elf: $(SRCS)
+$(LL_LIB)/libll.a:
+	cd $(LL_LIB) && make
+
+$(OUT_DIR)/$(PROJ_NAME).elf: $(SRCS) $(LL_LIB)/libll.a
 	mkdir -p $(OUT_DIR)
 	$(CC) $(CFLAGS) $^ -o $@ -L$(LL_LIB) -lll -L$(LDSCRIPT_INC) -lm -TSTM32L433CCTx_FLASH.ld
 	$(OBJCOPY) -O ihex $(OUT_DIR)/$(PROJ_NAME).elf $(OUT_DIR)/$(PROJ_NAME).hex

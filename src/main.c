@@ -156,11 +156,11 @@ int main(void)
 
     I2C3_Config();
 
-    if (!(powerStatus & PWR_SR1_SBF)) {
-        accel_config_awake();
-    } else if (powerStatus & LL_PWR_SR1_WUF4) {
+    if (powerStatus & LL_PWR_SR1_WUF4) {
         accel_read(0x39, &clickSrc, 1);
     }
+
+    accel_config_awake();
 
     while (1) {
         LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
@@ -168,9 +168,12 @@ int main(void)
         LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
         LL_mDelay(100);
         accel_read(0x39, &clickSrc, 1);
-        if (clickSrc) {
+        if (clickSrc & 0x40) {
+        	// interrupt active
             accel_config_asleep();
             // go to stop mode
+            LL_mDelay(100);
+            Power_Config();
             __WFI();
         }
     }

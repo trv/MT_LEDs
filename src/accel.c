@@ -7,11 +7,11 @@
 void accel_config_asleep(void)
 {
     uint8_t click_config[] = {
-    		0x3F,		// CLICK_CFG = enable single and double tap on XYZ (0x3F)
+    		0x2A,		// CLICK_CFG = enable double tap on XYZ
 			0x00,		// read-only CLICK_SRC
-			0x08,		// CLICK_THS = threshold
+			0x10,		// CLICK_THS = threshold
 			0x08,		// TIME_LIMIT
-			0x08,		// TIME_LATENCY
+			0x04,		// TIME_LATENCY
 			0x08,		// TIME_WINDOW
     };
     accel_write(0x38, click_config, 6);
@@ -30,11 +30,11 @@ void accel_config_asleep(void)
 void accel_config_awake(void)
 {
     uint8_t click_config[] = {
-    		0x3F,		// CLICK_CFG = enable single and double tap on XYZ (0x3F)
+    		0x15,		// CLICK_CFG = enable single tap on XYZ
 			0x00,		// read-only CLICK_SRC
 			0x08,		// CLICK_THS = threshold
 			0x08,		// TIME_LIMIT
-			0x08,		// TIME_LATENCY
+			0x0A,		// TIME_LATENCY
 			0x08,		// TIME_WINDOW
     };
     accel_write(0x38, click_config, 6);

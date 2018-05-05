@@ -1,6 +1,6 @@
 # put your *.o targets here, make should handle the rest!
 
-SRCS = system_stm32l4xx.c main.c 
+SRCS = system_stm32l4xx.c main.c accel.c
 OBJ = $(SRCS:.c=.o)
 
 # all the files will be generated with this name (main.elf, main.bin, main.hex, etc)
@@ -39,7 +39,7 @@ ROOT=$(shell pwd)
 
 CFLAGS += -I $(LL_LIB) -I $(LL_LIB)/CMSIS/Device/ST/STM32L4xx/Include
 CFLAGS += -I $(LL_LIB)/CMSIS/Include -I $(LL_LIB)/STM32L4xx_HAL_Driver/Inc -I src
-CFLAGS += -I./src
+CFLAGS += -I./inc
 
 # add startup file to build
 SRCS += ./startup_stm32l433xx.s 

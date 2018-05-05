@@ -3,6 +3,8 @@
 #include "stm32l4xx.h"
 #include "stm32l4xx_conf.h"
 
+#include "accel.h"
+
 void SystemClock_Config(void){
 
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_FLASH);
@@ -75,9 +77,6 @@ void LED_Config(void)
     LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 }
 
-void accel_write(uint8_t subAddr, uint8_t *data, size_t len);
-void accel_read(uint8_t subAddr, uint8_t *data, size_t len);
-
 static volatile uint8_t who_am_i = 0;
 void I2C3_Config(void)
 {
@@ -113,64 +112,6 @@ void I2C3_Config(void)
 
 }
 
-void accel_config(void)
-{
-    uint8_t accel_config[] = {
-    		0x4F,		// CTRL_REG1 = 50Hz, low power mode, XYZ on
-			0x84,		// CTRL_REG2 = normal high-pass filter, 1Hz cutoff, enabled only for CLICK
-			0x10,		// CTRL_REG3 = data ready interrupt on INT1
-			0x00,		// CTRL_REG4
-			0x00, 		// CTRL_REG5
-			0x80,		// CTRL_REG6 = click interrupt on INT2, interrupt active high
-    };
-
-    accel_write(0x20, accel_config, 6);
-
-    uint8_t click_config[] = {
-    		0x3F,		// CLICK_CFG = enable single and double tap on XYZ (0x3F)
-			0x00,		// read-only CLICK_SRC
-			0x08,		// CLICK_THS = threshold
-			0x08,		// TIME_LIMIT
-			0x08,		// TIME_LATENCY
-			0x08,		// TIME_WINDOW
-    };
-
-    accel_write(0x38, click_config, 6);
-}
-
-void accel_write(uint8_t subAddr, uint8_t *data, size_t len)
-{
-    LL_I2C_ClearFlag_STOP(I2C3);
-    LL_I2C_HandleTransfer(I2C3, 0x30, LL_I2C_ADDRSLAVE_7BIT, 1+len, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_WRITE);
-    while (!LL_I2C_IsActiveFlag_TXE(I2C3));
-    LL_I2C_TransmitData8(I2C3, 0x80 | subAddr); 	// set MSB to enable auto-increment
-    for (size_t i = 0; i < len; i++) {
-        while (!LL_I2C_IsActiveFlag_TXE(I2C3));
-        LL_I2C_TransmitData8(I2C3, data[i]);
-    }
-    while (/*!LL_I2C_IsActiveFlag_TC(I2C3) && !LL_I2C_IsActiveFlag_NACK(I2C3) &&*/ !LL_I2C_IsActiveFlag_STOP(I2C3));
-    LL_I2C_ClearFlag_STOP(I2C3);
-    LL_I2C_ClearFlag_NACK(I2C3);
-}
-
-void accel_read(uint8_t subAddr, uint8_t *data, size_t len)
-{
-    LL_I2C_ClearFlag_STOP(I2C3);
-    LL_I2C_HandleTransfer(I2C3, 0x30, LL_I2C_ADDRSLAVE_7BIT, 1, LL_I2C_MODE_SOFTEND, LL_I2C_GENERATE_START_WRITE);
-    LL_I2C_TransmitData8(I2C3, 0x80 | subAddr);	// set MSB to enable auto-increment
-    while (!LL_I2C_IsActiveFlag_TC(I2C3));
-    LL_I2C_HandleTransfer(I2C3, 0x30, LL_I2C_ADDRSLAVE_7BIT, len, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
-    for (size_t i = 0; i < len; i++) {
-    	while (!LL_I2C_IsActiveFlag_RXNE(I2C3) && !LL_I2C_IsActiveFlag_NACK(I2C3) && !LL_I2C_IsActiveFlag_STOP(I2C3));
-    	data[i] = LL_I2C_ReceiveData8(I2C3);
-    }
-
-    while (/*!LL_I2C_IsActiveFlag_TC(I2C3) && !LL_I2C_IsActiveFlag_NACK(I2C3) &&*/ !LL_I2C_IsActiveFlag_STOP(I2C3));
-    LL_I2C_ClearFlag_STOP(I2C3);
-    LL_I2C_ClearFlag_NACK(I2C3);
-}
-
-
 int main(void)
 {
     uint8_t clickSrc;
@@ -185,18 +126,23 @@ int main(void)
     I2C3_Config();
 
     if (!(powerStatus & PWR_SR1_SBF)) {
-        accel_config();
+        accel_config_awake();
     } else if (powerStatus & LL_PWR_SR1_WUF4) {
         accel_read(0x39, &clickSrc, 1);
     }
 
-	LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
-	LL_mDelay(500);
-	LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
-	LL_mDelay(10);
-
-	// go to stop mode
-    __WFI();
+    while (1) {
+        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
+        LL_mDelay(100);
+        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
+        LL_mDelay(100);
+        accel_read(0x39, &clickSrc, 1);
+        if (clickSrc) {
+            accel_config_asleep();
+            // go to stop mode
+            __WFI();
+        }
+    }
 
     /* loop forever */
     while(1);

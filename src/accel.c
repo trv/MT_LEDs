@@ -18,7 +18,7 @@ void accel_config_asleep(void)
 			0x04,		// TIME_LATENCY
 			0x08,		// TIME_WINDOW
     };
-    i2c_write(I2Cx, 0x80 | 0x38, click_config, 6);
+    i2c_write(I2Cx, ACCEL_ADDR, 0x80 | 0x38, click_config, 6);
 
     uint8_t accel_config[] = {
     		0x4F,		// CTRL_REG1 = 50Hz, low power mode, XYZ on
@@ -28,7 +28,7 @@ void accel_config_asleep(void)
 			0x00, 		// CTRL_REG5
 			0x80,		// CTRL_REG6 = click interrupt on INT2, interrupt active high
     };
-    i2c_write(I2Cx, 0x80 | 0x20, accel_config, 6);
+    i2c_write(I2Cx, ACCEL_ADDR, 0x80 | 0x20, accel_config, 6);
 }
 
 void accel_config_awake(void)
@@ -41,7 +41,7 @@ void accel_config_awake(void)
 			0x0A,		// TIME_LATENCY
 			0x08,		// TIME_WINDOW
     };
-    i2c_write(I2Cx, 0x80 | 0x38, click_config, 6);
+    i2c_write(I2Cx, ACCEL_ADDR, 0x80 | 0x38, click_config, 6);
 
     uint8_t accel_config[] = {
     		0x4F,		// CTRL_REG1 = 50Hz, low power mode, XYZ on
@@ -51,7 +51,7 @@ void accel_config_awake(void)
 			0x00, 		// CTRL_REG5
 			0x80,		// CTRL_REG6 = click interrupt on INT2, interrupt active high
     };
-    i2c_write(I2Cx, 0x80 | 0x20, accel_config, 6);
+    i2c_write(I2Cx, ACCEL_ADDR, 0x80 | 0x20, accel_config, 6);
 }
 
 

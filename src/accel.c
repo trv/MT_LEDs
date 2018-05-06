@@ -8,6 +8,18 @@
 
 #define I2Cx		I2C3
 
+#define INT1_PIN	LL_GPIO_PIN_0
+#define INT1_PORT	GPIOA
+
+// TODO: change back to PC13
+#define INT2_PIN	LL_GPIO_PIN_2
+#define INT2_PORT	GPIOA
+
+void accel_Init(void)
+{
+	// config INT1/INT2 pins
+}
+
 void accel_config_asleep(void)
 {
     uint8_t click_config[] = {

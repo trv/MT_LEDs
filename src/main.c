@@ -3,9 +3,12 @@
 #include "stm32l4xx.h"
 #include "stm32l4xx_conf.h"
 
+#include "interrupt.h"
 #include "i2c.h"
 #include "accel.h"
 #include "led.h"
+
+volatile uint32_t tick = 0;
 
 #define LED_ADDR		0xA0
 
@@ -41,7 +44,7 @@ uint32_t Power_Config(void)
     uint32_t status = PWR->SR1;
 
     // PC13: WKUP2 (accel int 2) - also button on dev board
-    LL_PWR_SetWakeUpPinPolarityLow(LL_PWR_WAKEUP_PIN2);
+    //LL_PWR_SetWakeUpPinPolarityLow(LL_PWR_WAKEUP_PIN2);
     LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN2);
 
     // PA0: Accel interrupt 1
@@ -159,6 +162,25 @@ void I2C1_Config(void)
     LL_I2C_Init(I2C1, &i2cConfig);
 }
 
+static volatile uint8_t accelData[6];
+static volatile uint8_t shutdown = 0;
+void accel_int1_handler(void *ctx)
+{
+    i2c_read(I2C3, ACCEL_ADDR, 0x80 | 0x28, accelData, 6);
+}
+
+void accel_int2_handler(void *ctx)
+{
+	uint8_t clickSrc = 0;
+    i2c_read(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1);
+    if (clickSrc & 0x40) {
+    	// interrupt active
+        accel_config_asleep();
+        // go to stop mode
+        shutdown = 1;
+    }
+}
+
 static struct LED l;
 
 int main(void)
@@ -168,6 +190,9 @@ int main(void)
     /* Configure the system clock */
     SystemClock_Config();
 
+	NVIC_ClearPendingIRQ(SysTick_IRQn);
+	NVIC_EnableIRQ(SysTick_IRQn);
+
     uint32_t powerStatus = Power_Config();
 
     LED_Config();
@@ -175,11 +200,17 @@ int main(void)
     I2C3_Config();
     I2C1_Config();
 
+    EXTI_SetCallback(ACCEL_INT1, accel_int1_handler, NULL);
+    EXTI_SetCallback(ACCEL_INT2, accel_int2_handler, NULL);
+
+    EXTI_Config();
+
     if (powerStatus & LL_PWR_SR1_WUF4) {
         i2c_read(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1);
     }
 
     accel_config_awake();
+    i2c_read(I2C3, ACCEL_ADDR, 0x80 | 0x28, accelData, 6);
 
     LED_Init(&l, I2C1, LED_ADDR, GPIOA, LL_GPIO_PIN_12);
 
@@ -187,20 +218,22 @@ int main(void)
         LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
         LL_mDelay(100);
         LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
-        LL_mDelay(100);
-        i2c_read(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1);
-        if (clickSrc & 0x40) {
-        	// interrupt active
-            accel_config_asleep();
-            // go to stop mode
-            LL_mDelay(100);
-            Power_Config();
-            __WFI();
+        if (shutdown) {
+        	while (1) {
+        		EXTI_Stop();
+                Power_Config();
+        		__WFI();
+        	}
         }
+        LL_mDelay(100);
     }
 
     /* loop forever */
     while(1);
 
     return 0;
+}
+
+void SysTick_Handler(void) {
+	tick++;
 }

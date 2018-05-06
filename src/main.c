@@ -86,7 +86,7 @@ void Power_Shutdown(void)
     __WFI();
 }
 
-void LED_Config(void)
+void StatusLED_Config(void)
 {
     /* Use a structure for this (usually for bulk init), you can also use LL functions */   
     LL_GPIO_InitTypeDef GPIO_InitStruct;
@@ -101,41 +101,6 @@ void LED_Config(void)
     GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
     GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
     LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-}
-
-void I2C3_Config(void)
-{
-    LL_I2C_InitTypeDef i2cConfig;
-    LL_GPIO_InitTypeDef gpioConfig;
-
-    // I2C3: SCL = PA7, SDA = PB4
-    LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
-    LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
-    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_I2C3);
-
-
-    LL_GPIO_StructInit(&gpioConfig);
-    gpioConfig.Pin = LL_GPIO_PIN_7;
-    gpioConfig.Speed = LL_GPIO_SPEED_FREQ_LOW;
-    gpioConfig.Mode = LL_GPIO_MODE_ALTERNATE;
-    gpioConfig.Pull = LL_GPIO_PULL_UP;
-    gpioConfig.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
-    gpioConfig.Alternate = LL_GPIO_AF_4;
-
-    // do we need internal pull--ups?
-
-    LL_GPIO_Init(GPIOA, &gpioConfig);
-
-    gpioConfig.Pin = LL_GPIO_PIN_4;
-    LL_GPIO_Init(GPIOB, &gpioConfig);
-
-    LL_I2C_StructInit(&i2cConfig);
-    i2cConfig.Timing = 0x30A54E69;     // 300ns rise, 300ns fall, 400kHz speed:
-    //0x00D00E28;  /* (Rise time = 120ns, Fall time = 25ns) */
-    
-    LL_I2C_Init(I2C3, &i2cConfig);
-
-    i2c_initNB(I2C3);
 }
 
 void I2C1_Config(void)
@@ -186,49 +151,35 @@ void I2C1_Config(void)
     i2c_initNB(I2C1);
 }
 
-static volatile uint8_t accelData[6];
 static volatile uint8_t shutdown = 0;
 static volatile uint8_t cycle = 0;
 static volatile uint8_t animate = 0;
+static volatile uint8_t accelData[6];
 
-static uint32_t lastClick = 0x80000000u;
-static const uint32_t doubleTapTime = 250;
-static uint8_t clickSrc = 0;
-static uint8_t clickFlag = 0;
-
-void clickHandler(void *ctx)
+// called from accel_Poll() on main thread
+void clickHandler(void *ctx, enum ClickType type)
 {
-    if (clickSrc & 0x40) {
-    	// interrupt active
-    	if ((tick - lastClick) < doubleTapTime) {
-			accel_config_asleep();
-			// go to stop mode
-			shutdown = 1;
-    	} else {
-    		lastClick = tick;
-    		cycle = 1;
+	switch (type) {
+	case ClickSingle:
+		cycle = 1;
+		break;
+	case ClickDouble:
+		accel_config_asleep();
+		// go to stop mode
+    	while (1) {
+    		EXTI_Stop();
+            Power_Shutdown();
     	}
-    }
+    	break;
+	}
 }
 
-void accel_int2_handler(void *ctx)
+void animateHandler(void *ctx, volatile uint8_t *data)
 {
-	// set clickFlag to read the clickSrc later if I2C is busy
-    clickFlag = i2c_readNB(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1, clickHandler, NULL);
-}
-
-void animateHandler(void *ctx)
-{
-    animate++;
-    if (clickFlag) {
-    	clickFlag = 0;
-    	i2c_readNB(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1, clickHandler, NULL);
-    }
-}
-
-void accel_int1_handler(void *ctx)
-{
-    i2c_readNB(I2C3, ACCEL_ADDR, 0x80 | 0x28, accelData, 6, animateHandler, NULL);
+	for (int i=0; i < 6; i++) {
+		accelData[i] = data[i];
+	}
+	animate++;
 }
 
 static struct LED l;
@@ -291,22 +242,21 @@ int main(void)
 
     uint32_t powerStatus = Power_Config();
 
-    LED_Config();
-
-    I2C3_Config();
-    I2C1_Config();
-
-    EXTI_SetCallback(ACCEL_INT1, accel_int1_handler, NULL);
-    EXTI_SetCallback(ACCEL_INT2, accel_int2_handler, NULL);
+    StatusLED_Config();
 
     EXTI_Config();
+
+    accel_Init();
+    accel_setClickHandler(clickHandler, NULL);
+    accel_setDataHandler(animateHandler, NULL);
+
+    I2C1_Config();
 
     if (powerStatus & LL_PWR_SR1_WUF4) {
         i2c_read(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1);
     }
 
     accel_config_awake();
-    i2c_read(I2C3, ACCEL_ADDR, 0x80 | 0x28, accelData, 6);
 
     LED_Init(&l, I2C1, LED_ADDR, GPIOA, LL_GPIO_PIN_12);
 
@@ -318,17 +268,12 @@ int main(void)
     		LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_13);
     	}
 
-        if (shutdown) {
-        	while (1) {
-        		EXTI_Stop();
-                Power_Shutdown();
-        	}
-        }
+    	accel_Poll();
 
         if (animate >= 1) {
         	animate = 0;
 
-        	if (cycle && (tick - lastClick) > doubleTapTime) {
+        	if (cycle) {
             	cycle = 0;
             	animateIndex = (animateIndex + 1) % 7;
             	if (animateIndex < 6) {

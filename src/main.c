@@ -180,6 +180,8 @@ void I2C1_Config(void)
     //0x00D00E28;  /* (Rise time = 120ns, Fall time = 25ns) */
     
     LL_I2C_Init(I2C1, &i2cConfig);
+
+    i2c_initNB(I2C1);
 }
 
 static volatile uint8_t accelData[6];
@@ -306,16 +308,20 @@ int main(void)
         	}
         }
 
-    	if (cycle && (tick - lastClick) > doubleTapTime) {
-        	cycle = 0;
-        	LED_Update(&l, solidColors);
-        	animateIndex = (animateIndex + 1) % 7;
-        }
-
-        if (animate >= 1 && animateIndex == 6) {
+        if (animate >= 1) {
         	animate = 0;
-        	LED_Update(&l, animateLEDs);
-        	currentPhase += phaseSpeed;
+
+        	if (cycle && (tick - lastClick) > doubleTapTime) {
+            	cycle = 0;
+            	animateIndex = (animateIndex + 1) % 7;
+            }
+
+        	if (animateIndex < 6) {
+        		LED_Update(&l, solidColors);
+        	} else {
+        		LED_Update(&l, animateLEDs);
+        		currentPhase += phaseSpeed;
+        	}
         }
         __WFI();
     }

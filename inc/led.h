@@ -10,6 +10,7 @@ struct LED {
 	GPIO_TypeDef *GPIOx;	// for SHDN pin
 	uint32_t SHDN_Pin;		// for SHDN pin
 	uint8_t devAddr;		// I2C device address
+	uint8_t displayOffset;	// offset into frame buffer
 	uint8_t fb[192*2];		// double-buffered frame data
 };
 

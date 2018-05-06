@@ -5,6 +5,8 @@
 
 #include "i2c.h"
 
+#define FRAME_SIZE		192
+
 // ORDER: RGB, RGB, RGB
 static const uint8_t lookup[192] = {
 		0xB0, 0xA0, 0x90,
@@ -90,6 +92,7 @@ void LED_Init(
 	l->devAddr = devAddr;
 	l->GPIOx = GPIOx;
 	l->SHDN_Pin = SHDN_Pin;
+	l->displayOffset = 0;
 
 	// release shutdown pin
 	LL_GPIO_SetOutputPin(l->GPIOx, l->SHDN_Pin);
@@ -151,15 +154,18 @@ void LED_Update(
 
 static void refresh(struct LED *l)
 {
-	i2c_write(l->I2Cx, l->devAddr, 0x00, l->fb, 192);
+	// swap frame buffer
+	l->displayOffset = FRAME_SIZE - l->displayOffset;
+	i2c_writeNB(l->I2Cx, l->devAddr, 0x00, &l->fb[l->displayOffset], 192);
 }
 
 static void set(struct LED *l, int x, int y, int r, int g, int b)
 {
+	int renderOffset = FRAME_SIZE - l->displayOffset;
 	int index = 3 * x + 24 * y;
-	l->fb[lookup[index]] = r;
-	l->fb[lookup[index + 1]] = g;
-	l->fb[lookup[index + 2]] = b;
+	l->fb[renderOffset+lookup[index]] = r;
+	l->fb[renderOffset+lookup[index + 1]] = g;
+	l->fb[renderOffset+lookup[index + 2]] = b;
 }
 
 

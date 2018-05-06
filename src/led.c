@@ -93,7 +93,6 @@ void LED_Init(
 
 	// release shutdown pin
 	LL_GPIO_SetOutputPin(l->GPIOx, l->SHDN_Pin);
-    LL_mDelay(10);
 
 	memset(l->fb, 0, sizeof(l->fb));
 

@@ -32,7 +32,21 @@ void SystemClock_Config(void){
     
     LL_PLL_ConfigSystemClock_HSI(&sUTILS_PLLInitStruct, &sUTILS_ClkInitStruct);
     
-    LL_Init1msTick(SystemCoreClock);
+    /* Configure the SysTick to have interrupt in 1ms time base */
+    SysTick->LOAD  = (uint32_t)((SystemCoreClock / 1000) - 1UL);  /* set reload register */
+    SysTick->VAL   = 0UL;                                       /* Load the SysTick Counter Value */
+    SysTick->CTRL  = SysTick_CTRL_CLKSOURCE_Msk |
+    		SysTick_CTRL_TICKINT_Msk |
+			SysTick_CTRL_ENABLE_Msk;                   /* Enable the Systick Timer */
+
+	NVIC_ClearPendingIRQ(SysTick_IRQn);
+	NVIC_EnableIRQ(SysTick_IRQn);
+}
+
+void delay_ms(uint32_t ms)
+{
+	uint32_t now = tick;
+	while ((tick - now) <= ms);
 }
 
 uint32_t Power_Config(void)
@@ -190,9 +204,6 @@ int main(void)
     /* Configure the system clock */
     SystemClock_Config();
 
-	NVIC_ClearPendingIRQ(SysTick_IRQn);
-	NVIC_EnableIRQ(SysTick_IRQn);
-
     uint32_t powerStatus = Power_Config();
 
     LED_Config();
@@ -216,7 +227,7 @@ int main(void)
 
     while (1) {
         LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
-        LL_mDelay(100);
+        delay_ms(100);
         LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
         if (shutdown) {
         	while (1) {
@@ -225,7 +236,7 @@ int main(void)
         		__WFI();
         	}
         }
-        LL_mDelay(100);
+        delay_ms(100);
     }
 
     /* loop forever */

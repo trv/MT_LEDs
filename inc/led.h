@@ -22,4 +22,4 @@ void LED_Init(
 
 void LED_Update(
 		struct LED *l,
-		void (*f(int x, int y, uint8_t *color)));
+		void (f(int x, int y, uint8_t *color)));

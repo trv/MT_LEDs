@@ -178,6 +178,7 @@ void I2C1_Config(void)
 
 static volatile uint8_t accelData[6];
 static volatile uint8_t shutdown = 0;
+static volatile uint8_t cycle = 0;
 void accel_int1_handler(void *ctx)
 {
     i2c_read(I2C3, ACCEL_ADDR, 0x80 | 0x28, accelData, 6);
@@ -185,17 +186,40 @@ void accel_int1_handler(void *ctx)
 
 void accel_int2_handler(void *ctx)
 {
+	static uint32_t lastClick = 0x80000000u;
 	uint8_t clickSrc = 0;
     i2c_read(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1);
     if (clickSrc & 0x40) {
     	// interrupt active
-        accel_config_asleep();
-        // go to stop mode
-        shutdown = 1;
+    	if ((tick - lastClick) < 300) {
+			accel_config_asleep();
+			// go to stop mode
+			shutdown = 1;
+    	} else {
+    		lastClick = tick;
+    		cycle = 1;
+    	}
     }
 }
 
 static struct LED l;
+
+uint8_t animateIndex = 0;
+uint8_t animateColor[][3] = {
+		{64,0,0},
+		{48,48,0},
+		{0, 64, 0},
+		{0, 48, 48},
+		{0, 0, 64},
+		{48, 0, 48}
+};
+
+void animate(int x, int y, uint8_t *c)
+{
+	for (int i=0; i < 3; i++) {
+		c[i] = animateColor[animateIndex][i];
+	}
+}
 
 int main(void)
 {
@@ -235,6 +259,14 @@ int main(void)
                 Power_Config();
         		__WFI();
         	}
+        }
+        if (cycle != 0) {
+        	cycle++;
+        }
+        if (cycle == 3) {
+        	cycle = 0;
+        	LED_Update(&l, animate);
+        	animateIndex = (animateIndex + 1) % 6;
         }
         delay_ms(100);
     }

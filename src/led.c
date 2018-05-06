@@ -117,7 +117,7 @@ void LED_Init(
 	// set config and global current
 	// unlock and switch to page 0
 	cfg[0] = 0x01;	// TODO: sync enable?
-	cfg[2] = 0x02;	// global brightness
+	cfg[2] = 0x01;	// global brightness
 	i2c_write(l->I2Cx, l->devAddr, 0x00, cfg, 2);
 
 	// unlock and switch to page 1
@@ -128,7 +128,7 @@ void LED_Init(
 
 	for (int x = 0; x < 8; x++) {
 		for (int y = 0; y < 8; y++) {
-			set(l, x, y, x*32, y*32, (16-(x+y))*16-1);
+			set(l, x, y, x*12, y*12, ((x+y))*12);
 		}
 	}
 
@@ -138,9 +138,15 @@ void LED_Init(
 
 void LED_Update(
 		struct LED *l,
-		void (*f(int x, int y, uint8_t *color)))
+		void (f(int x, int y, uint8_t *color)))
 {
-
+	uint8_t c[3] = {0};
+	for (int i = 0; i < 64; i++) {
+		// get color
+		f(i/8, i%8, c);
+		set(l, i/8, i%8, c[0], c[1], c[2]);
+	}
+	refresh(l);
 }
 
 static void refresh(struct LED *l)

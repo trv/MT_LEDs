@@ -25,7 +25,7 @@ void accel_config_asleep(void)
     uint8_t click_config[] = {
     		0x2A,		// CLICK_CFG = enable double tap on XYZ
 			0x00,		// read-only CLICK_SRC
-			0x10,		// CLICK_THS = threshold
+			0x0C,		// CLICK_THS = threshold
 			0x08,		// TIME_LIMIT
 			0x04,		// TIME_LATENCY
 			0x08,		// TIME_WINDOW
@@ -48,9 +48,9 @@ void accel_config_awake(void)
     uint8_t click_config[] = {
     		0x15,		// CLICK_CFG = enable single tap on XYZ
 			0x00,		// read-only CLICK_SRC
-			0x08,		// CLICK_THS = threshold
+			0x10,		// CLICK_THS = threshold
 			0x08,		// TIME_LIMIT
-			0x0A,		// TIME_LATENCY
+			0x01,		// TIME_LATENCY
 			0x08,		// TIME_WINDOW
     };
     i2c_write(I2Cx, ACCEL_ADDR, 0x80 | 0x38, click_config, 6);

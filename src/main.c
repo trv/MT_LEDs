@@ -314,11 +314,12 @@ int main(void)
         	if (cycle && (tick - lastClick) > doubleTapTime) {
             	cycle = 0;
             	animateIndex = (animateIndex + 1) % 7;
+            	if (animateIndex < 6) {
+            		LED_Update(&l, solidColors);
+            	}
             }
 
-        	if (animateIndex < 6) {
-        		LED_Update(&l, solidColors);
-        	} else {
+        	if (animateIndex == 6) {
         		LED_Update(&l, animateLEDs);
         		currentPhase += phaseSpeed;
         	}

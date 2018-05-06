@@ -57,6 +57,11 @@ uint32_t Power_Config(void)
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
     uint32_t status = PWR->SR1;
 
+    return status;
+}
+
+void Power_Shutdown(void)
+{
     // PC13: WKUP2 (accel int 2) - also button on dev board
     //LL_PWR_SetWakeUpPinPolarityLow(LL_PWR_WAKEUP_PIN2);
     LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN2);
@@ -71,13 +76,14 @@ uint32_t Power_Config(void)
     LL_PWR_SetPowerMode(LL_PWR_MODE_STANDBY);
     LL_LPM_EnableDeepSleep();
 
+    LL_PWR_DisableInternWU();
+
     LL_PWR_ClearFlag_SB();
     LL_PWR_ClearFlag_WU1();
     LL_PWR_ClearFlag_WU2();
     LL_PWR_ClearFlag_WU4();
-    LL_PWR_DisableInternWU();
 
-    return status;
+    __WFI();
 }
 
 void LED_Config(void)
@@ -186,14 +192,16 @@ void accel_int1_handler(void *ctx)
     animate++;
 }
 
+static uint32_t lastClick = 0x80000000u;
+static const uint32_t doubleTapTime = 250;
+
 void accel_int2_handler(void *ctx)
 {
-	static uint32_t lastClick = 0x80000000u;
 	uint8_t clickSrc = 0;
     i2c_read(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1);
     if (clickSrc & 0x40) {
     	// interrupt active
-    	if ((tick - lastClick) < 300) {
+    	if ((tick - lastClick) < doubleTapTime) {
 			accel_config_asleep();
 			// go to stop mode
 			shutdown = 1;
@@ -283,35 +291,34 @@ int main(void)
 
     LED_Init(&l, I2C1, LED_ADDR, GPIOA, LL_GPIO_PIN_12);
 
+    uint32_t toggleTick = tick;
+
     while (1) {
-        LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
-        delay_ms(1);
-        LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
+    	if ( (tick - toggleTick) >= 100) {
+    		toggleTick += 100;
+    		LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_13);
+    	}
+
         if (shutdown) {
         	while (1) {
         		EXTI_Stop();
-                Power_Config();
-        		__WFI();
+                Power_Shutdown();
         	}
         }
-        if (cycle != 0) {
-        	cycle++;
-        }
-        if (cycle == 3) {
+
+    	if (cycle && (tick - lastClick) > doubleTapTime) {
         	cycle = 0;
         	LED_Update(&l, solidColors);
         	animateIndex = (animateIndex + 1) % 7;
         }
+
         if (animate >= 1 && animateIndex == 6) {
         	animate = 0;
         	LED_Update(&l, animateLEDs);
         	currentPhase += phaseSpeed;
         }
-        delay_ms(1);
+        __WFI();
     }
-
-    /* loop forever */
-    while(1);
 
     return 0;
 }

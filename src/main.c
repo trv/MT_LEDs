@@ -134,6 +134,8 @@ void I2C3_Config(void)
     //0x00D00E28;  /* (Rise time = 120ns, Fall time = 25ns) */
     
     LL_I2C_Init(I2C3, &i2cConfig);
+
+    i2c_initNB(I2C3);
 }
 
 void I2C1_Config(void)
@@ -188,19 +190,14 @@ static volatile uint8_t accelData[6];
 static volatile uint8_t shutdown = 0;
 static volatile uint8_t cycle = 0;
 static volatile uint8_t animate = 0;
-void accel_int1_handler(void *ctx)
-{
-    i2c_read(I2C3, ACCEL_ADDR, 0x80 | 0x28, accelData, 6);
-    animate++;
-}
 
 static uint32_t lastClick = 0x80000000u;
 static const uint32_t doubleTapTime = 250;
+static uint8_t clickSrc = 0;
+static uint8_t clickFlag = 0;
 
-void accel_int2_handler(void *ctx)
+void clickHandler(void *ctx)
 {
-	uint8_t clickSrc = 0;
-    i2c_read(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1);
     if (clickSrc & 0x40) {
     	// interrupt active
     	if ((tick - lastClick) < doubleTapTime) {
@@ -212,6 +209,26 @@ void accel_int2_handler(void *ctx)
     		cycle = 1;
     	}
     }
+}
+
+void accel_int2_handler(void *ctx)
+{
+	// set clickFlag to read the clickSrc later if I2C is busy
+    clickFlag = i2c_readNB(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1, clickHandler, NULL);
+}
+
+void animateHandler(void *ctx)
+{
+    animate++;
+    if (clickFlag) {
+    	clickFlag = 0;
+    	i2c_readNB(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1, clickHandler, NULL);
+    }
+}
+
+void accel_int1_handler(void *ctx)
+{
+    i2c_readNB(I2C3, ACCEL_ADDR, 0x80 | 0x28, accelData, 6, animateHandler, NULL);
 }
 
 static struct LED l;

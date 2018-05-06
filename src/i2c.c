@@ -11,7 +11,11 @@ struct transfer {
 
 static struct transfer xfer[3];
 
+static const uint32_t I2Cx_EV_IRQn[] = {I2C1_EV_IRQn, I2C2_EV_IRQn, I2C3_EV_IRQn};
+static const uint32_t I2Cx_ER_IRQn[] = {I2C1_ER_IRQn, I2C2_ER_IRQn, I2C3_ER_IRQn};
+
 static uint8_t getIndex(I2C_TypeDef *I2Cx);
+
 
 void i2c_write(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, uint8_t *data, uint8_t len)
 {
@@ -49,13 +53,15 @@ void i2c_read(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, volatile uint
 
 void i2c_initNB(I2C_TypeDef *I2Cx)
 {
-	NVIC_ClearPendingIRQ(I2C1_EV_IRQn);
-	NVIC_SetPriority(I2C1_EV_IRQn, 3);
-	NVIC_EnableIRQ(I2C1_EV_IRQn);
+	uint8_t i = getIndex(I2Cx);
 
-	NVIC_ClearPendingIRQ(I2C1_ER_IRQn);
-	NVIC_SetPriority(I2C1_ER_IRQn, 3);
-	NVIC_EnableIRQ(I2C1_ER_IRQn);
+	NVIC_ClearPendingIRQ(I2Cx_EV_IRQn[i]);
+	NVIC_SetPriority(I2Cx_EV_IRQn[i], 3);
+	NVIC_EnableIRQ(I2Cx_EV_IRQn[i]);
+
+	NVIC_ClearPendingIRQ(I2Cx_ER_IRQn[i]);
+	NVIC_SetPriority(I2Cx_ER_IRQn[i], 3);
+	NVIC_EnableIRQ(I2Cx_ER_IRQn[i]);
 }
 
 static uint8_t getIndex(I2C_TypeDef *I2Cx)
@@ -71,9 +77,9 @@ static uint8_t getIndex(I2C_TypeDef *I2Cx)
 	}
 }
 
-void i2c_writeNB(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, uint8_t *data, uint8_t len, void (cb(void *)), void *ctx)
+int i2c_writeNB(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, uint8_t *data, uint8_t len, void (cb(void *)), void *ctx)
 {
-	if (LL_I2C_IsActiveFlag_BUSY(I2Cx)) { return; }	// ongoing transfer in progress
+	if (LL_I2C_IsActiveFlag_BUSY(I2Cx)) { return 1; }	// ongoing transfer in progress
 
 	uint8_t i = getIndex(I2Cx);
 
@@ -94,11 +100,12 @@ void i2c_writeNB(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, uint8_t *d
     LL_I2C_EnableIT_STOP(I2Cx);
 	//LL_I2C_EnableIT_TC(I2Cx);	// not needed with AUTOEND
 
+    return 0;
 }
 
-void i2c_readNB(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, volatile uint8_t *data, uint8_t len, void (cb(void *)), void *ctx)
+int i2c_readNB(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, volatile uint8_t *data, uint8_t len, void (cb(void *)), void *ctx)
 {
-	if (LL_I2C_IsActiveFlag_BUSY(I2Cx)) { return; }	// ongoing transfer in progress
+	if (LL_I2C_IsActiveFlag_BUSY(I2Cx)) { return 1; }	// ongoing transfer in progress
 
 	uint8_t i = getIndex(I2Cx);
 
@@ -117,6 +124,8 @@ void i2c_readNB(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, volatile ui
     LL_I2C_EnableIT_TC(I2Cx);
     LL_I2C_EnableIT_NACK(I2Cx);
     LL_I2C_EnableIT_STOP(I2Cx);
+
+    return 0;
 }
 
 void I2C_EV_IRQHandler(I2C_TypeDef *I2Cx, struct transfer *t)

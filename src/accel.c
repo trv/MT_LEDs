@@ -17,6 +17,7 @@ static volatile uint8_t clickSrc = 0;
 static volatile uint8_t clickReadPendingFlag = 0;
 static volatile uint8_t singleClickPending = 0;
 static volatile uint8_t doubleClickPending = 0;
+static volatile uint8_t dataPending = 0;
 
 static volatile uint8_t accelData[6];
 
@@ -83,6 +84,11 @@ void accel_setDataHandler(dataHandlerCB cb, void *ctx)
 
 void accel_Poll(void)
 {
+	if (dataPending) {
+		dataPending = 0;
+		dataCB(dataCtx, accelData);
+	}
+
 	if (singleClickPending && (tick - lastClick) > doubleTapTime) {
 		singleClickPending = 0;
 		if (clickCB) { clickCB(clickCtx, ClickSingle); }
@@ -164,8 +170,7 @@ void accel_int2_handler(void *ctx)
 
 void dataReadHandler(void *ctx)
 {
-	if (dataCB) { dataCB(dataCtx, accelData); }
-
+	dataPending = 1;
 	if (clickReadPendingFlag) {
     	clickReadPendingFlag = 0;
     	i2c_readNB(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1, clickReadHandler, NULL);

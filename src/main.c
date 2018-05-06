@@ -152,45 +152,17 @@ void I2C1_Config(void)
 }
 
 static volatile uint8_t cycle = 0;
-static volatile uint8_t animate = 0;
 static volatile uint8_t accelData[6];
 
-// called from accel_Poll() on main thread
-void clickHandler(void *ctx, enum ClickType type)
-{
-	switch (type) {
-	case ClickSingle:
-		cycle = 1;
-		break;
-	case ClickDouble:
-		accel_config_asleep();
-		// go to stop mode
-    	while (1) {
-    		EXTI_Stop();
-            Power_Shutdown();
-    	}
-    	break;
-	}
-}
-
-void animateHandler(void *ctx, volatile uint8_t *data)
-{
-	for (int i=0; i < 6; i++) {
-		accelData[i] = data[i];
-	}
-	animate++;
-}
-
-static struct LED l;
 
 uint8_t animateIndex = 6;
 uint8_t animateColor[][3] = {
-		{64,0,0},
-		{48,48,0},
-		{0, 64, 0},
-		{0, 48, 48},
-		{0, 0, 64},
-		{48, 0, 48}
+		{64,  0,  0},
+		{48, 48,  0},
+		{ 0, 64,  0},
+		{ 0, 48, 48},
+		{ 0,  0, 64},
+		{48,  0, 48}
 };
 
 void solidColors(int x, int y, uint8_t *c)
@@ -232,6 +204,47 @@ void animateLEDs(int x, int y, uint8_t *c)
 	c[2] = sinTable[(uint8_t)(currentPhase + offset + bluePhase)]/2;
 }
 
+
+// called from accel_Poll() on main thread
+void clickHandler(void *ctx, enum ClickType type)
+{
+	switch (type) {
+	case ClickSingle:
+		cycle = 1;
+		break;
+	case ClickDouble:
+		accel_config_asleep();
+		// go to stop mode
+    	while (1) {
+    		EXTI_Stop();
+            Power_Shutdown();
+    	}
+    	break;
+	}
+}
+
+static struct LED l;
+
+void animateHandler(void *ctx, volatile uint8_t *data)
+{
+	for (int i=0; i < 6; i++) {
+		accelData[i] = data[i];
+	}
+
+	if (cycle) {
+		cycle = 0;
+		animateIndex = (animateIndex + 1) % 7;
+		if (animateIndex < 6) {
+			LED_Update(&l, solidColors);
+		}
+	}
+
+	if (animateIndex == 6) {
+		LED_Update(&l, animateLEDs);
+		currentPhase += phaseSpeed;
+	}
+}
+
 int main(void)
 {
     uint8_t clickSrc;
@@ -267,25 +280,9 @@ int main(void)
     		LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_13);
     	}
 
-    	// handle single/double click events
+    	// handle single/double click events & data event
     	accel_Poll();
 
-        if (animate >= 1) {
-        	animate = 0;
-
-        	if (cycle) {
-            	cycle = 0;
-            	animateIndex = (animateIndex + 1) % 7;
-            	if (animateIndex < 6) {
-            		LED_Update(&l, solidColors);
-            	}
-            }
-
-        	if (animateIndex == 6) {
-        		LED_Update(&l, animateLEDs);
-        		currentPhase += phaseSpeed;
-        	}
-        }
         __WFI();
     }
 

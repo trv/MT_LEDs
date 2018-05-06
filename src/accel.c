@@ -48,7 +48,7 @@ void accel_config_awake(void)
     uint8_t click_config[] = {
     		0x15,		// CLICK_CFG = enable single tap on XYZ
 			0x00,		// read-only CLICK_SRC
-			0x10,		// CLICK_THS = threshold
+			0x18,		// CLICK_THS = threshold
 			0x08,		// TIME_LIMIT
 			0x01,		// TIME_LATENCY
 			0x08,		// TIME_WINDOW

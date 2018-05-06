@@ -6,6 +6,10 @@ changes for real board:
 2. swap `ACCEL_INT2` and `LIPO_PG` back to the right pins (user button on dev kit is connected to PC13, so use that to simulate battery charger for now). 
 
 
+TODO:
+ALS driver
+battery status/charger driver
+
 
 Interrupts:
 

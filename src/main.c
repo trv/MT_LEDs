@@ -170,7 +170,7 @@ void I2C1_Config(void)
 
 
     LL_I2C_StructInit(&i2cConfig);
-    i2cConfig.Timing = 0x30A54E69; //0x00B11024;
+    i2cConfig.Timing = 0x20A54E50; //0x00B11024;
     //0x00D00E28;  /* (Rise time = 120ns, Fall time = 25ns) */
     
     LL_I2C_Init(I2C1, &i2cConfig);
@@ -206,7 +206,7 @@ void accel_int2_handler(void *ctx)
 
 static struct LED l;
 
-uint8_t animateIndex = 8;
+uint8_t animateIndex = 6;
 uint8_t animateColor[][3] = {
 		{64,0,0},
 		{48,48,0},
@@ -225,7 +225,7 @@ void solidColors(int x, int y, uint8_t *c)
 
 
 uint8_t currentPhase = 0;
-const uint8_t phaseSpeed = 10;
+const uint8_t phaseSpeed = 4;
 int panelPhase = 0x80;  // 1/4 of 256
 int redPhase = 0;
 int greenPhase = 85;
@@ -250,9 +250,9 @@ void animateLEDs(int x, int y, uint8_t *c)
 	} else if (offset < -127) {
 		offset = -127;
 	}
-	c[0] = sinTable[(uint8_t)(currentPhase + offset + redPhase)];
-	c[1] = sinTable[(uint8_t)(currentPhase + offset + greenPhase)];
-	c[2] = sinTable[(uint8_t)(currentPhase + offset + bluePhase)];
+	c[0] = sinTable[(uint8_t)(currentPhase + offset + redPhase)]/2;
+	c[1] = sinTable[(uint8_t)(currentPhase + offset + greenPhase)]/2;
+	c[2] = sinTable[(uint8_t)(currentPhase + offset + bluePhase)]/2;
 }
 
 int main(void)
@@ -285,7 +285,7 @@ int main(void)
 
     while (1) {
         LL_GPIO_SetOutputPin(GPIOB, LL_GPIO_PIN_13);
-        delay_ms(10);
+        delay_ms(1);
         LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_13);
         if (shutdown) {
         	while (1) {
@@ -302,12 +302,12 @@ int main(void)
         	LED_Update(&l, solidColors);
         	animateIndex = (animateIndex + 1) % 7;
         }
-        if (animate >= 2 && animateIndex == 6) {
+        if (animate >= 1 && animateIndex == 6) {
         	animate = 0;
         	LED_Update(&l, animateLEDs);
         	currentPhase += phaseSpeed;
         }
-        delay_ms(10);
+        delay_ms(1);
     }
 
     /* loop forever */

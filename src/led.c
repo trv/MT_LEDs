@@ -156,7 +156,7 @@ static void refresh(struct LED *l)
 {
 	// swap frame buffer
 	l->displayOffset = FRAME_SIZE - l->displayOffset;
-	i2c_writeNB(l->I2Cx, l->devAddr, 0x00, &l->fb[l->displayOffset], 192);
+	i2c_writeNB(l->I2Cx, l->devAddr, 0x00, &l->fb[l->displayOffset], 192, NULL, NULL);
 }
 
 static void set(struct LED *l, int x, int y, int r, int g, int b)

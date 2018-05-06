@@ -151,7 +151,6 @@ void I2C1_Config(void)
     i2c_initNB(I2C1);
 }
 
-static volatile uint8_t shutdown = 0;
 static volatile uint8_t cycle = 0;
 static volatile uint8_t animate = 0;
 static volatile uint8_t accelData[6];
@@ -268,6 +267,7 @@ int main(void)
     		LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_13);
     	}
 
+    	// handle single/double click events
     	accel_Poll();
 
         if (animate >= 1) {

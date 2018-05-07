@@ -42,7 +42,7 @@ CFLAGS += -I $(LL_LIB)/CMSIS/Include -I $(LL_LIB)/STM32L4xx_HAL_Driver/Inc -I sr
 CFLAGS += -I./inc
 
 # add startup file to build
-SRCS += ./startup_stm32l433xx.s 
+SRCS += ./src/startup_stm32l433xx.s 
 
 OBJS = $(SRCS:.c=.o)
 

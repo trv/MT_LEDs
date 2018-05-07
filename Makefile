@@ -66,7 +66,9 @@ $(OUT_DIR)/$(PROJ_NAME).elf: $(SRCS) $(LL_LIB)/libll.a
 	$(OBJCOPY) -O ihex $(OUT_DIR)/$(PROJ_NAME).elf $(OUT_DIR)/$(PROJ_NAME).hex
 	$(OBJCOPY) -O binary $(OUT_DIR)/$(PROJ_NAME).elf $(OUT_DIR)/$(PROJ_NAME).bin
 	$(OBJDUMP) -St $(OUT_DIR)/$(PROJ_NAME).elf >$(OUT_DIR)/$(PROJ_NAME).lst
-	$(SIZE) -A $(OUT_DIR)/$(PROJ_NAME).elf
+	$(SIZE) $(OUT_DIR)/$(PROJ_NAME).elf
+
+#	$(SIZE) -A $(OUT_DIR)/$(PROJ_NAME).elf
 		
 clean:
 	find ./ -name '*~' | xargs rm -f	

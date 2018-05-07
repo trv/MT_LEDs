@@ -118,9 +118,9 @@ void display_Update(volatile uint8_t *data)
 		uint8_t c[3];
 		for (int i = 0; i < NUM_LEDS; i++) {
 			animateLEDs(pX[i], pY[i], c);
-			fb[iR[i]] = c[0];
-			fb[iG[i]] = c[1];
-			fb[iB[i]] = c[2];
+			fb[iR[i]] = gamma[c[0]];
+			fb[iG[i]] = gamma[c[1]];
+			fb[iB[i]] = gamma[c[2]];
 		}
 		LED_Update(&l[0], fb);
 		currentPhase += phaseSpeed;
@@ -141,7 +141,7 @@ void display_Update(volatile uint8_t *data)
 			if (phase > 15) { phase = 15; }
 			fb[iR[j]] = 0;
 			fb[iG[j]] = 0;
-			fb[iB[j]] = gamma[transitionTable[phase]/2];
+			fb[iB[j]] = gamma[transitionTable[phase]];
 		}
 		LED_Update(&l[0], fb);
 		currentPhase++;

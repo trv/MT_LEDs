@@ -11,7 +11,7 @@ ALS driver
 battery status/charger driver
 
 
-###Interrupts:
+### Interrupts:
 
 pin | ISR | net
 --- | --- | ---
@@ -22,7 +22,7 @@ PB12 | EXTI15_10_IRQHandler	| LED2_INTB
 PC13 | EXTI15_10_IRQHandler	| ACCEL_INT2	
 PA15 | EXTI15_10_IRQHandler	| LIPO_CHG		
 
-###ADC channels:
+### ADC channels:
 
 pin | channel | net
 --- | --- | ---

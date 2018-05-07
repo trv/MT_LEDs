@@ -11,19 +11,21 @@ ALS driver
 battery status/charger driver
 
 
-Interrupts:
+###Interrupts:
 
-`PA0 `: `ACCEL_INT1`		(`EXTI0_IRQHandler`)  
-`PA2 `: `LIPO_PG`			(`EXTI2_IRQHandler`)  
-`PA11`: `LED1_INTB`			(`EXTI15_10_IRQHandler`)  
-`PB12`: `LED2_INTB`			(`EXTI15_10_IRQHandler`)  
-`PC13`: `ACCEL_INT2`		(`EXTI15_10_IRQHandler`)  
-`PA15`: `LIPO_CHG`			(`EXTI15_10_IRQHandler`)  
+pin | ISR | net
+--- | --- | ---
+PA0  | EXTI0_IRQHandler		| ACCEL_INT1	
+PA2  | EXTI2_IRQHandler		| LIPO_PG		
+PA11 | EXTI15_10_IRQHandler	| LED1_INTB	
+PB12 | EXTI15_10_IRQHandler	| LED2_INTB	
+PC13 | EXTI15_10_IRQHandler	| ACCEL_INT2	
+PA15 | EXTI15_10_IRQHandler	| LIPO_CHG		
 
-ADC channels:
+###ADC channels:
 
 pin | channel | net
-- | - | -
+--- | --- | ---
 PA0 | ADC1_IN5 | DUMMY_CHANNEL (see errata 2.5.1)
 PA1 | ADC1_IN6 | VBAT_MEAS
 PA3 | ADC1_IN8 | ALS1

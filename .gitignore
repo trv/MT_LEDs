@@ -5,4 +5,7 @@
 *.lst
 *.map
 
+.project
+.cproject
+.settings/
 

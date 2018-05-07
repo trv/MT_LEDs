@@ -9,6 +9,8 @@
 
 // TODO: set back to 2 when the second driver is connected
 #define NUM_LED_DRIVERS	1
+#define FRAME_SIZE		192
+#define NUM_LEDS		(64 * NUM_LED_DRIVERS)
 
 #define LED_ADDR		0xA0
 #define LED1_PORT		GPIOA
@@ -21,13 +23,13 @@ static void gpioInit(GPIO_TypeDef *GPIOx, uint32_t sclPin, uint32_t sdaPin, uint
 static void i2cInit(I2C_TypeDef *I2Cx);
 
 static void animateLEDs(int x, int y, uint8_t *c);
-static void solidColors(int x, int y, uint8_t *c);
 
 static GPIO_TypeDef * const LEDx_PORT[] = {LED1_PORT, LED2_PORT};
 static I2C_TypeDef * const LEDx_I2C[] = {I2C1, I2C2};
 static const uint32_t LEDx_SHDN_PIN[] = {LED1_SHDN_PIN, LED2_SHDN_PIN};
 
 static struct LED l[NUM_LED_DRIVERS];
+static uint8_t fb[NUM_LED_DRIVERS*FRAME_SIZE*2];	// room for double-buffering
 
 static volatile uint8_t accelData[6];
 static uint8_t currentPhase = 0;
@@ -52,6 +54,15 @@ static const uint8_t animateColor[][3] = {
 static const uint8_t sinTable[] = {
   128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170, 173, 176, 179, 182, 185, 188, 190, 193, 196, 198, 201, 203, 206, 208, 211, 213, 215, 218, 220, 222, 224, 226, 228, 230, 232, 234, 235, 237, 238, 240, 241, 243, 244, 245, 246, 248, 249, 250, 250, 251, 252, 253, 253, 254, 254, 254, 255, 255, 255, 255, 255, 255, 255, 254, 254, 254, 253, 253, 252, 251, 250, 250, 249, 248, 246, 245, 244, 243, 241, 240, 238, 237, 235, 234, 232, 230, 228, 226, 224, 222, 220, 218, 215, 213, 211, 208, 206, 203, 201, 198, 196, 193, 190, 188, 185, 182, 179, 176, 173, 170, 167, 165, 162, 158, 155, 152, 149, 146, 143, 140, 137, 134, 131, 128, 124, 121, 118, 115, 112, 109, 106, 103, 100, 97, 93, 90, 88, 85, 82, 79, 76, 73, 70, 67, 65, 62, 59, 57, 54, 52, 49, 47, 44, 42, 40, 37, 35, 33, 31, 29, 27, 25, 23, 21, 20, 18, 17, 15, 14, 12, 11, 10, 9, 7, 6, 5, 5, 4, 3, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3, 4, 5, 5, 6, 7, 9, 10, 11, 12, 14, 15, 17, 18, 20, 21, 23, 25, 27, 29, 31, 33, 35, 37, 40, 42, 44, 47, 49, 52, 54, 57, 59, 62, 65, 67, 70, 73, 76, 79, 82, 85, 88, 90, 93, 97, 100, 103, 106, 109, 112, 115, 118, 121, 124
 };
+
+
+// LED position and channel index info
+static const uint8_t iR[] = {176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,128,129,130,131,132,133,134,135,136,137,138,139,140,141,142,143,80,81,82,83,84,85,86,87,88,89,90,91,92,93,94,95,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47};
+static const uint8_t iG[] = {160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,112,113,114,115,116,117,118,119,120,121,122,123,124,125,126,127,64,65,66,67,68,69,70,71,72,73,74,75,76,77,78,79,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31};
+static const uint8_t iB[] = {144,145,146,147,148,149,150,151,152,153,154,155,156,157,158,159,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+
+static const int8_t pX[] = {-126,-90,-54,-18,18,54,90,126,-126,-90,-54,-18,18,54,90,126,-126,-90,-54,-18,18,54,90,126,-126,-90,-54,-18,18,54,90,126,-126,-90,-54,-18,18,54,90,126,-126,-90,-54,-18,18,54,90,126,-126,-90,-54,-18,18,54,90,126,-126,-90,-54,-18,18,54,90,126};
+static const int8_t pY[] = {126,126,126,126,126,126,126,126,90,90,90,90,90,90,90,90,54,54,54,54,54,54,54,54,18,18,18,18,18,18,18,18,-18,-18,-18,-18,-18,-18,-18,-18,-54,-54,-54,-54,-54,-54,-54,-54,-90,-90,-90,-90,-90,-90,-90,-90,-126,-126,-126,-126,-126,-126,-126,-126};
 
 void display_Init(void)
 {
@@ -92,10 +103,22 @@ void display_Update(volatile uint8_t *data)
 	if (animateIndex < 6) {
 		if (refreshPending) {
 			refreshPending = 0;
-			LED_Update(&l[0], solidColors);
+			for (int i = 0; i < NUM_LEDS; i++) {
+				fb[iR[i]] = animateColor[animateIndex][0];
+				fb[iG[i]] = animateColor[animateIndex][1];
+				fb[iB[i]] = animateColor[animateIndex][2];
+			}
+			LED_Update(&l[0], fb);
 		}
 	} else {
-		LED_Update(&l[0], animateLEDs);
+		uint8_t c[3];
+		for (int i = 0; i < NUM_LEDS; i++) {
+			animateLEDs(pX[i], pY[i], c);
+			fb[iR[i]] = c[0];
+			fb[iG[i]] = c[1];
+			fb[iB[i]] = c[2];
+		}
+		LED_Update(&l[0], fb);
 		currentPhase += phaseSpeed;
 	}
 }
@@ -156,7 +179,7 @@ static void animateLEDs(int x, int y, uint8_t *c)
 	int8_t Ay = accelData[3];
 	int8_t Az = accelData[5];
 
-	int32_t offset = -((2*x - 7) * Az + (2*y - 7) * Ay)/4;
+	int32_t offset = ((-x * Az) + (y * Ay))/64;
 	if (offset > 127) {
 		offset = 127;
 	} else if (offset < -127) {
@@ -166,11 +189,3 @@ static void animateLEDs(int x, int y, uint8_t *c)
 	c[1] = sinTable[(uint8_t)(currentPhase + offset + greenPhase)]/2;
 	c[2] = sinTable[(uint8_t)(currentPhase + offset + bluePhase)]/2;
 }
-
-static void solidColors(int x, int y, uint8_t *c)
-{
-	for (int i=0; i < 3; i++) {
-		c[i] = animateColor[animateIndex][i];
-	}
-}
-

@@ -78,8 +78,7 @@ static const uint8_t lookup[192] = {
 		0x2F, 0x1F, 0x0F,
 };
 
-static void set(struct LED *l, int x, int y, int r, int g, int b);
-static void refresh(struct LED *l);
+//static void set(uint8_t *fb, int x, int y, int r, int g, int b);
 
 void LED_Init(
 		struct LED *l,
@@ -92,12 +91,9 @@ void LED_Init(
 	l->devAddr = devAddr;
 	l->GPIOx = GPIOx;
 	l->SHDN_Pin = SHDN_Pin;
-	l->displayOffset = 0;
 
 	// release shutdown pin
 	LL_GPIO_SetOutputPin(l->GPIOx, l->SHDN_Pin);
-
-	memset(l->fb, 0, sizeof(l->fb));
 
 	uint8_t cfg[32] = {0};
 
@@ -128,44 +124,22 @@ void LED_Init(
 	i2c_write(l->I2Cx, l->devAddr, 0xFE, cfg, 1);
 	cfg[0] = 0x01;
 	i2c_write(l->I2Cx, l->devAddr, 0xFD, cfg, 1);
-
-	for (int x = 0; x < 8; x++) {
-		for (int y = 0; y < 8; y++) {
-			set(l, x, y, x*12, y*12, ((x+y))*12);
-		}
-	}
-
-	refresh(l);
-
 }
 
 void LED_Update(
 		struct LED *l,
-		void (f(int x, int y, uint8_t *color)))
+		uint8_t *fb)
 {
-	uint8_t c[3] = {0};
-	for (int i = 0; i < 64; i++) {
-		// get color
-		f(i/8, i%8, c);
-		set(l, i/8, i%8, c[0], c[1], c[2]);
-	}
-	refresh(l);
+	i2c_writeNB(l->I2Cx, l->devAddr, 0x00, fb, 192, NULL, NULL);
 }
 
-static void refresh(struct LED *l)
+/*
+static void set(uint8_t *fb, int x, int y, int r, int g, int b)
 {
-	// swap frame buffer
-	l->displayOffset = FRAME_SIZE - l->displayOffset;
-	i2c_writeNB(l->I2Cx, l->devAddr, 0x00, &l->fb[l->displayOffset], 192, NULL, NULL);
-}
-
-static void set(struct LED *l, int x, int y, int r, int g, int b)
-{
-	int renderOffset = FRAME_SIZE - l->displayOffset;
 	int index = 3 * x + 24 * y;
-	l->fb[renderOffset+lookup[index]] = r;
-	l->fb[renderOffset+lookup[index + 1]] = g;
-	l->fb[renderOffset+lookup[index + 2]] = b;
+	fb[lookup[index]] = r;
+	fb[lookup[index + 1]] = g;
+	fb[lookup[index + 2]] = b;
 }
-
+*/
 

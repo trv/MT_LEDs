@@ -92,10 +92,21 @@ void LED_Init(
 	l->GPIOx = GPIOx;
 	l->SHDN_Pin = SHDN_Pin;
 
-	// release shutdown pin
-	LL_GPIO_SetOutputPin(l->GPIOx, l->SHDN_Pin);
-
 	uint8_t cfg[32] = {0};
+
+	// unlock and switch to page 3
+	cfg[0] = 0xC5;
+	i2c_write(l->I2Cx, l->devAddr, 0xFE, cfg, 1);
+	cfg[0] = 0x03;
+	i2c_write(l->I2Cx, l->devAddr, 0xFD, cfg, 1);
+
+	// read reset register to reset everything
+	i2c_read(l->I2Cx, l->devAddr, 0x11, cfg, 1);
+
+	// set config and global current
+	cfg[0] = 0x01;	// TODO: sync enable?
+	cfg[1] = 0x01;	// global brightness
+	i2c_write(l->I2Cx, l->devAddr, 0x00, cfg, 2);
 
 	// unlock and switch to page 0
 	cfg[0] = 0xC5;
@@ -107,22 +118,14 @@ void LED_Init(
 	memset(cfg, 0xFF, sizeof(cfg));
 	i2c_write(l->I2Cx, l->devAddr, 0x00, cfg, 24);
 
-	// unlock and switch to page 3
-	cfg[0] = 0xC5;
-	i2c_write(l->I2Cx, l->devAddr, 0xFE, cfg, 1);
-	cfg[0] = 0x03;
-	i2c_write(l->I2Cx, l->devAddr, 0xFD, cfg, 1);
-
-	// set config and global current
-	cfg[0] = 0x01;	// TODO: sync enable?
-	cfg[1] = 0x01;	// global brightness
-	i2c_write(l->I2Cx, l->devAddr, 0x00, cfg, 2);
-
 	// unlock and switch to page 1
 	cfg[0] = 0xC5;
 	i2c_write(l->I2Cx, l->devAddr, 0xFE, cfg, 1);
 	cfg[0] = 0x01;
 	i2c_write(l->I2Cx, l->devAddr, 0xFD, cfg, 1);
+
+	// release shutdown pin
+	LL_GPIO_SetOutputPin(l->GPIOx, l->SHDN_Pin);
 }
 
 void LED_Update(

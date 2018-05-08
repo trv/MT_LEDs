@@ -19,6 +19,8 @@ static uint8_t getIndex(I2C_TypeDef *I2Cx);
 
 void i2c_write(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, uint8_t *data, uint8_t len)
 {
+	if (LL_I2C_IsActiveFlag_BUSY(I2Cx)) { return; }	// ongoing transfer in progress
+
     LL_I2C_ClearFlag_STOP(I2Cx);
     LL_I2C_HandleTransfer(I2Cx, devAddr, LL_I2C_ADDRSLAVE_7BIT, 1+len, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_WRITE);
     while (!LL_I2C_IsActiveFlag_TXE(I2Cx));
@@ -40,7 +42,7 @@ void i2c_read(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, volatile uint
     LL_I2C_HandleTransfer(I2Cx, devAddr, LL_I2C_ADDRSLAVE_7BIT, 1, LL_I2C_MODE_SOFTEND, LL_I2C_GENERATE_START_WRITE);
     LL_I2C_TransmitData8(I2Cx, subAddr);
     while (!LL_I2C_IsActiveFlag_TC(I2Cx));
-    LL_I2C_HandleTransfer(I2Cx, 0x30, LL_I2C_ADDRSLAVE_7BIT, len, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
+    LL_I2C_HandleTransfer(I2Cx, devAddr, LL_I2C_ADDRSLAVE_7BIT, len, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
     for (size_t i = 0; i < len; i++) {
     	while (!LL_I2C_IsActiveFlag_RXNE(I2Cx) && !LL_I2C_IsActiveFlag_NACK(I2Cx) && !LL_I2C_IsActiveFlag_STOP(I2Cx));
     	data[i] = LL_I2C_ReceiveData8(I2Cx);

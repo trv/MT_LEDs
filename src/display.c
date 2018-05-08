@@ -34,11 +34,11 @@ static uint8_t fb[NUM_LED_DRIVERS*FRAME_SIZE*2];	// room for double-buffering
 static volatile uint8_t accelData[6];
 static uint32_t alsData = 0;
 static uint8_t currentPhase = 0;
-static const uint8_t phaseSpeed = 4;
+static const uint8_t phaseSpeed = 1;
 //static const int panelPhase = 0x80;  // 1/4 of 256
-static const int redPhase = 0;
+static const int redPhase = 170;
 static const int greenPhase = 85;
-static const int bluePhase = 170;
+static const int bluePhase = 0;
 
 uint8_t refreshPending = 0;
 uint8_t animateIndex = 6;
@@ -124,8 +124,12 @@ void display_Update(volatile uint8_t *accel, volatile uint32_t *als)
 	// 1.6V = max brightness, ADC reference = 3.3V (for now)
 	// max data = (2^18-1) * 1.6 / 3.3 = 127100
 	// min data = (2^18-1) * 0.01 / 3.3 ~= 800
-	// global brightness range = 1-128
-	uint8_t globalBrightness = 1 + (alsData / 1000);
+	// global brightness range = 1-255
+	uint16_t globalBrightness = 1 + (alsData / 500);
+	if (globalBrightness > 255) {
+		// saturate to 8-bit
+		globalBrightness = 255;
+	}
 	LED_SetBrightness(&l[0], globalBrightness);	// BLOCKING CALL
 
 	if (animateIndex < 6) {
@@ -224,11 +228,11 @@ static void i2cInit(I2C_TypeDef *I2Cx)
 static void animateLEDs(int x, int y, uint8_t *c)
 {
 	// grab the latest accelData TODO: make atomic and/or double-buffer accelData
-	//int8_t Ax = accelData[1];
+	int8_t Ax = accelData[1];
 	int8_t Ay = accelData[3];
-	int8_t Az = accelData[5];
+	//int8_t Az = accelData[5];
 
-	int32_t offset = ((-x * Az) + (y * Ay))/64;
+	int32_t offset = ((x * Ax) + (y * Ay))/64;
 	if (offset > 127) {
 		offset = 127;
 	} else if (offset < -127) {

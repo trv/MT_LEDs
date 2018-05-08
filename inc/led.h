@@ -21,3 +21,7 @@ void LED_Init(
 void LED_Update(
 		struct LED *l,
 		uint8_t *fb);
+
+void LED_SetBrightness(
+		struct LED *l,
+		uint8_t brightness);

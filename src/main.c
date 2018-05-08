@@ -4,12 +4,14 @@
 #include "stm32l4xx_conf.h"
 
 #include "interrupt.h"
+#include "adc.h"
 #include "i2c.h"
 #include "accel.h"
 #include "led.h"
 #include "display.h"
 
 volatile uint32_t tick = 0;
+static uint32_t adcSamples[5];
 
 void SystemClock_Config(void){
 
@@ -121,9 +123,9 @@ void clickHandler(void *ctx, enum ClickType type)
 }
 
 // called from accel_Poll() on main thread
-void animateHandler(void *ctx, volatile uint8_t *data)
+void animateHandler(void *ctx, volatile uint8_t *accelData)
 {
-	display_Update(data);
+	display_Update(accelData, &adcSamples[1]);
 }
 
 int main(void)
@@ -134,6 +136,8 @@ int main(void)
     uint32_t powerStatus = Power_Config();
     StatusLED_Config();
     EXTI_Config();
+
+    adc_Init();
 
     accel_Init();
     accel_setClickHandler(clickHandler, NULL);
@@ -153,6 +157,7 @@ int main(void)
     	if ( (tick - toggleTick) >= 100) {
     		toggleTick += 100;
     		LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_13);
+            adc_Sample(adcSamples);
     	}
 
     	// handle single/double click events & data event

@@ -32,6 +32,7 @@ static struct LED l[NUM_LED_DRIVERS];
 static uint8_t fb[NUM_LED_DRIVERS*FRAME_SIZE*2];	// room for double-buffering
 
 static volatile uint8_t accelData[6];
+static uint32_t alsData = 0;
 static uint8_t currentPhase = 0;
 static const uint8_t phaseSpeed = 4;
 //static const int panelPhase = 0x80;  // 1/4 of 256
@@ -102,11 +103,30 @@ void display_Next(void)
 	refreshPending = 1;
 }
 
-void display_Update(volatile uint8_t *data)
+void display_Update(volatile uint8_t *accel, volatile uint32_t *als)
 {
 	for (int i=0; i < 6; i++) {
-		accelData[i] = data[i];
+		accelData[i] = accel[i];
 	}
+
+	uint32_t sum = 0;
+	for (int i=0; i < 4; i++) {
+		sum += als[i];
+	}
+	// ALS data is 12-bit, 4 samples (+2 bits) = 14-bit data.
+	// multiply by 16 to avoid truncation in IIR filter (+4 bits = 18-bit data)
+	sum = sum << 4;
+
+	// display updates at 50Hz, 1-(15/16)^50 = 96% of the new value after 1 second
+	alsData = (alsData * 15 + sum + 8) >> 4;
+
+	// alsData is 18 bits, convert to global brightness setting
+	// 1.6V = max brightness, ADC reference = 3.3V (for now)
+	// max data = (2^18-1) * 1.6 / 3.3 = 127100
+	// min data = (2^18-1) * 0.01 / 3.3 ~= 800
+	// global brightness range = 1-128
+	uint8_t globalBrightness = 1 + (alsData / 1000);
+	LED_SetBrightness(&l[0], globalBrightness);	// BLOCKING CALL
 
 	if (animateIndex < 6) {
 		if (refreshPending) {

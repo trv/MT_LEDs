@@ -16,7 +16,7 @@ static uint32_t adcSamples[5];
 enum ShutdownReason {
     ShutdownReason_LowBattery,
     ShutdownReason_TurnOff
-}
+};
 
 void SystemClock_Config(void){
 
@@ -97,36 +97,19 @@ void Power_Shutdown(enum ShutdownReason reason)
     __WFI();
 }
 
-void StatusLED_Config(void)
-{
-    /* Use a structure for this (usually for bulk init), you can also use LL functions */   
-    LL_GPIO_InitTypeDef GPIO_InitStruct;
-    
-    /* Enable the GPIO clock for GPIO */
-    LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
-
-    /* Set up port parameters */
-    LL_GPIO_StructInit(&GPIO_InitStruct);
-    GPIO_InitStruct.Pin = LL_GPIO_PIN_13;
-    GPIO_InitStruct.Speed = LL_GPIO_SPEED_FREQ_LOW;
-    GPIO_InitStruct.Mode = LL_GPIO_MODE_OUTPUT;
-    GPIO_InitStruct.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-    LL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-}
-
 // called from accel_Poll() on main thread
 void clickHandler(void *ctx, enum ClickType type)
 {
 	switch (type) {
 	case ClickSingle:
-		display_Next();	//cycle = 1;
+		display_Next();
 		break;
 	case ClickDouble:
 		accel_config_asleep();
 		// go to stop mode, loop to ensure no pending interrupts
     	while (1) {
     		EXTI_Stop();
-            Power_Shutdown();
+            Power_Shutdown(ShutdownReason_TurnOff);
     	}
     	break;
 	}
@@ -144,7 +127,6 @@ int main(void)
 
     SystemClock_Config();
     uint32_t powerStatus = Power_Config();
-    //StatusLED_Config();
     EXTI_Config();
 
     adc_Init();
@@ -166,7 +148,6 @@ int main(void)
     while (1) {
     	if ( (tick - toggleTick) >= 100) {
     		toggleTick += 100;
-    		//LL_GPIO_TogglePin(GPIOB, LL_GPIO_PIN_13);
             adc_Sample(adcSamples);
     	}
 

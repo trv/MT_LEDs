@@ -4,6 +4,9 @@
 #include "stm32l4xx.h"
 #include "stm32l4xx_conf.h"
 
+#define EN_5V_PORT	GPIOA
+#define EN_5V_PIN	LL_GPIO_PIN_8
+
 uint32_t Power_Init(void)
 {
     /* Enable clock for SYSCFG */
@@ -11,6 +14,22 @@ uint32_t Power_Init(void)
 
     LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
     uint32_t status = PWR->SR1;
+
+    // turn on 5V regulator
+
+    LL_GPIO_ResetOutputPin(EN_5V_PORT, EN_5V_PIN);
+
+    LL_GPIO_InitTypeDef gpioConfig;
+    LL_GPIO_StructInit(&gpioConfig);
+    gpioConfig.Pin = EN_5V_PIN;
+    gpioConfig.Speed = LL_GPIO_SPEED_LOW;
+    gpioConfig.Mode = LL_GPIO_MODE_OUTPUT;
+    gpioConfig.Pull = LL_GPIO_PULL_NO;
+    gpioConfig.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+    gpioConfig.Alternate = LL_GPIO_AF_0;
+    LL_GPIO_Init(EN_5V_PORT, &gpioConfig);
+
+    LL_GPIO_SetOutputPin(EN_5V_PORT, EN_5V_PIN);
 
     return status;
 }

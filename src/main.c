@@ -18,12 +18,13 @@ enum ShutdownReason {
     ShutdownReason_TurnOff
 };
 
-void SystemClock_Config(void){
-
+void SystemClock_Config(void)
+{
+    // update flash latency
     LL_AHB1_GRP1_EnableClock(LL_AHB1_GRP1_PERIPH_FLASH);
     MODIFY_REG(FLASH->ACR, FLASH_ACR_LATENCY, (FLASH_ACR_LATENCY_4WS));
-    /* Clock init stuff */ 
     
+    /* Clock init stuff */ 
     LL_UTILS_PLLInitTypeDef sUTILS_PLLInitStruct = {
         .PLLM = LL_RCC_PLLM_DIV_2, 
         .PLLN = 20,

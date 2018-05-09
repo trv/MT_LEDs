@@ -6,6 +6,7 @@
 
 #include "i2c.h"
 #include "interrupt.h"
+#include "power.h"
 
 #define I2Cx		I2C3
 
@@ -152,13 +153,18 @@ void clickReadHandler(void *ctx)
 {
     if (clickSrc & 0x40) {
     	// interrupt active
-    	if ((tick - lastClick) < doubleTapTime && singleClickPending) {
-    		singleClickPending = 0;
-    		doubleClickPending = 1;
+    	if ((tick - lastClick) < doubleTapTime) {
+            if (singleClickPending) {
+                singleClickPending = 0;
+                doubleClickPending = 1;
+            } else if (doubleClickPending) {
+                // emergency shutdown
+                Power_Shutdown(ShutdownReason_Lockup);
+            }
     	} else {
-    		lastClick = tick;
     		singleClickPending = 1;
     	}
+        lastClick = tick;
     }
 }
 

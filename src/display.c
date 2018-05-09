@@ -158,7 +158,7 @@ void display_Update(volatile uint8_t *accel, volatile uint32_t *als)
 	} else if (animateIndex == 7) {
 		for (int i = 0; i < sizeof(border); i++) {
 			int j = border[i];
-			int32_t phase = currentPhase - (256*i)/sizeof(border);
+			int32_t phase = currentPhase - (240*i)/sizeof(border);
 			if (phase < 0) { phase = 0; }
 			if (phase > 15) { phase = 15; }
 			fb[iR[j]] = gR[transitionTable[phase]];
@@ -167,7 +167,7 @@ void display_Update(volatile uint8_t *accel, volatile uint32_t *als)
 		}
 		for (int i = 0; i < sizeof(center); i++) {
 			int j = center[i];
-			int32_t phase = currentPhase - (256*i)/sizeof(center);
+			int32_t phase = currentPhase - (240*i)/sizeof(center);
 			if (phase < 0) { phase = 0; }
 			if (phase > 15) { phase = 15; }
 			fb[iR[j]] = 0;
@@ -224,11 +224,6 @@ static void i2cInit(I2C_TypeDef *I2Cx)
     i2c_initNB(I2Cx);
 }
 
-
-
-
-
-
 static void animateLEDs(int x, int y, uint8_t *c)
 {
 	// grab the latest accelData TODO: make atomic and/or double-buffer accelData
@@ -242,7 +237,7 @@ static void animateLEDs(int x, int y, uint8_t *c)
 	} else if (offset < -127) {
 		offset = -127;
 	}
-	c[0] = sinTable[(uint8_t)(currentPhase + offset + redPhase)]/2;
-	c[1] = sinTable[(uint8_t)(currentPhase + offset + greenPhase)]/2;
-	c[2] = sinTable[(uint8_t)(currentPhase + offset + bluePhase)]/2;
+	c[0] = sinTable[(uint8_t)(currentPhase + offset + redPhase)];
+	c[1] = sinTable[(uint8_t)(currentPhase + offset + greenPhase)];
+	c[2] = sinTable[(uint8_t)(currentPhase + offset + bluePhase)];
 }

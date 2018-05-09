@@ -9,14 +9,10 @@
 #include "accel.h"
 #include "led.h"
 #include "display.h"
+#include "power.h"
 
 volatile uint32_t tick = 0;
 static uint32_t adcSamples[5];
-
-enum ShutdownReason {
-    ShutdownReason_LowBattery,
-    ShutdownReason_TurnOff
-};
 
 void SystemClock_Config(void)
 {
@@ -56,47 +52,7 @@ void delay_ms(uint32_t ms)
 	while ((tick - now) <= ms);		//todo: __WFI(); ?
 }
 
-uint32_t Power_Config(void)
-{
-    /* Enable clock for SYSCFG */
-    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_SYSCFG);
 
-    LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_PWR);
-    uint32_t status = PWR->SR1;
-
-    return status;
-}
-
-void Power_Shutdown(enum ShutdownReason reason)
-{
-    // only enable double-tap interrupt for normal turn-off
-    if (reason == ShutdownReason_TurnOff) {
-        // PC13: WKUP2 - accel int 2 - double-tap
-        LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN2);
-
-        // PA0: WKUP1 - accel int 1 - data ready - not used for wakeup
-        //LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN1);
-    }
-
-    // LIPO_PG interrupt is always active
-    // PA2: WKUP4 - Charger PG interrupt (with pull-up)
-    LL_PWR_EnableGPIOPullUp(LL_PWR_GPIO_A, LL_PWR_GPIO_BIT_2);
-    LL_PWR_SetWakeUpPinPolarityLow(LL_PWR_WAKEUP_PIN4);
-    LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN4);
-
-    // set STANDBY as low power mode
-    LL_PWR_SetPowerMode(LL_PWR_MODE_STANDBY);
-    LL_LPM_EnableDeepSleep();
-
-    LL_PWR_DisableInternWU();
-
-    LL_PWR_ClearFlag_SB();
-    LL_PWR_ClearFlag_WU1();
-    LL_PWR_ClearFlag_WU2();
-    LL_PWR_ClearFlag_WU4();
-
-    __WFI();
-}
 
 // called from accel_Poll() on main thread
 void clickHandler(void *ctx, enum ClickType type)
@@ -127,7 +83,7 @@ int main(void)
     uint8_t clickSrc = 0;
 
     SystemClock_Config();
-    uint32_t powerStatus = Power_Config();
+    uint32_t powerStatus = Power_Init();
     EXTI_Config();
 
     adc_Init();

@@ -6,7 +6,10 @@
 #define NUM_CHANNELS	6
 #define NUM_PINS		5
 
-#define GPIOx			GPIOA
+#define GPIOx				GPIOA
+
+#define VBAT_MEAS_EN_PORT	GPIOB
+#define VBAT_MEAS_EN_PIN	LL_GPIO_PIN_1
 
 static const uint32_t gpioPins[] = {
 	LL_GPIO_PIN_1,
@@ -21,6 +24,7 @@ void adc_Init(void)
 	// clock config
 	LL_RCC_SetADCClockSource(LL_RCC_ADC_CLKSOURCE_SYSCLK);
     LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
+    LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
 	LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ADC);
 
 	// enable ADC boost in SYSCFG
@@ -29,8 +33,23 @@ void adc_Init(void)
 	LL_ADC_DisableDeepPowerDown(ADC1);
 	LL_ADC_EnableInternalRegulator(ADC1);
 
-	// GPIO config
     LL_GPIO_InitTypeDef gpioConfig;
+
+	// GPIO config for meas_en pin
+    LL_GPIO_ResetOutputPin(VBAT_MEAS_EN_PORT, VBAT_MEAS_EN_PIN);
+
+    LL_GPIO_StructInit(&gpioConfig);
+    gpioConfig.Pin = VBAT_MEAS_EN_PIN;
+    gpioConfig.Speed = LL_GPIO_SPEED_LOW;
+    gpioConfig.Mode = LL_GPIO_MODE_OUTPUT;
+    gpioConfig.Pull = LL_GPIO_PULL_NO;
+    gpioConfig.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
+    LL_GPIO_Init(VBAT_MEAS_EN_PORT, &gpioConfig);
+
+    // just leave vbat meas enabled for now since time constant is so slow.
+    LL_GPIO_SetOutputPin(VBAT_MEAS_EN_PORT, VBAT_MEAS_EN_PIN);
+
+	// GPIO config for ADC pins
 
     LL_GPIO_StructInit(&gpioConfig);
     gpioConfig.Speed = LL_GPIO_SPEED_LOW;

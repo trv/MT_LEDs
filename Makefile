@@ -1,6 +1,6 @@
 # put your *.o targets here, make should handle the rest!
 
-SRCS = system_stm32l4xx.c main.c i2c.c accel.c led.c interrupt.c display.c adc.c power.c
+SRCS = system_stm32l4xx.c main.c i2c.c accel.c led.c interrupt.c display.c adc.c power.c battery.c
 OBJ = $(SRCS:.c=.o)
 
 # all the files will be generated with this name (main.elf, main.bin, main.hex, etc)

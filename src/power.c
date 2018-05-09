@@ -26,9 +26,7 @@ uint32_t Power_Init(void)
     gpioConfig.Mode = LL_GPIO_MODE_OUTPUT;
     gpioConfig.Pull = LL_GPIO_PULL_NO;
     gpioConfig.OutputType = LL_GPIO_OUTPUT_PUSHPULL;
-    gpioConfig.Alternate = LL_GPIO_AF_0;
     LL_GPIO_Init(EN_5V_PORT, &gpioConfig);
-
     LL_GPIO_SetOutputPin(EN_5V_PORT, EN_5V_PIN);
 
     return status;
@@ -43,6 +41,8 @@ void Power_Shutdown(enum ShutdownReason reason)
 
         // PA0: WKUP1 - accel int 1 - data ready - not used for wakeup
         //LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN1);
+    } else if (reason == ShutdownReason_LowBattery) {
+    	// TODO: put accel in shutdown mode to save more power
     }
 
     // LIPO_PG interrupt is always active

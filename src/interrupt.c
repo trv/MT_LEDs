@@ -120,7 +120,6 @@ void EXTI_Config(void)
 
     gpioConfig.Speed = LL_GPIO_SPEED_LOW;
     gpioConfig.Mode = LL_GPIO_MODE_INPUT;
-    gpioConfig.Pull = LL_GPIO_PULL_NO;
 
     for (int i=0; i < NUM_EXTI; i++) {
 		gpioConfig.Pin = GPIO_PIN[i];

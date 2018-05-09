@@ -2,10 +2,10 @@
 
 enum EXTI_Interrupt {
 	ACCEL_INT1,
-	ACCEL_INT2,		// TODO: swap order with LIPO_PG
+	LIPO_PG,
 	LED1_INTB,
 	LED2_INTB,
-	LIPO_PG,
+	ACCEL_INT2,
 	LIPO_CHG,
 
 	NUM_EXTI

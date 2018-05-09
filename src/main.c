@@ -71,7 +71,7 @@ void Power_Shutdown(void)
     //LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN1);
     
     // PA2: Charger PG interrupt
-    LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN4);
+    //LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN4);
 
     // set STANDBY as low power mode
     LL_PWR_SetPowerMode(LL_PWR_MODE_STANDBY);

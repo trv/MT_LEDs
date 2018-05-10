@@ -41,8 +41,6 @@ void Power_Shutdown(enum ShutdownReason reason)
 
         // PA0: WKUP1 - accel int 1 - data ready - not used for wakeup
         //LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN1);
-    } else if (reason == ShutdownReason_LowBattery) {
-    	// TODO: put accel in shutdown mode to save more power
     }
 
     // LIPO_PG interrupt is always active

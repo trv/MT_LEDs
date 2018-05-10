@@ -85,6 +85,11 @@ void accel_setDataHandler(dataHandlerCB cb, void *ctx)
 
 void accel_Poll(void)
 {
+    // just in case we missed an edge
+    if (EXTI_GetPinState(ACCEL_INT1)) {
+        accel_int1_handler(NULL);
+    }
+
 	if (dataPending) {
 		dataPending = 0;
 		dataCB(dataCtx, accelData);

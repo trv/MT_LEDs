@@ -125,17 +125,17 @@ int main(void)
     accel_setClickHandler(clickHandler, NULL);
     accel_setDataHandler(animateHandler, NULL);
 
-    if (powerStatus & LL_PWR_SR1_WUF4) {
+    if (powerStatus & LL_PWR_SR1_WUF2) {
         i2c_read(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1);
     }
 
     accel_config_awake();
 
-    uint32_t toggleTick = tick;
+    uint32_t sampleTick = tick;
 
     while (1) {
-    	if ( (tick - toggleTick) >= 100) {
-    		toggleTick += 100;
+    	if ( (tick - sampleTick) >= 100) {
+    		sampleTick += 100;
             adc_Sample(adcSamples);
             Battery_UpdateVoltage(adcSamples[0]);
     	}

@@ -1,4 +1,5 @@
 
+#include <stdint.h>
 
 enum EXTI_Interrupt {
 	ACCEL_INT1,
@@ -14,4 +15,5 @@ enum EXTI_Interrupt {
 
 void EXTI_Config(void);
 void EXTI_Stop(void);
+uint32_t EXTI_GetPinState(enum EXTI_Interrupt i);
 void EXTI_SetCallback(enum EXTI_Interrupt i, void (*callback)(void *), void *ctx);

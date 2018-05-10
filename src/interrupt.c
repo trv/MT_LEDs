@@ -165,6 +165,11 @@ void EXTI_Stop(void)
 
 }
 
+uint32_t EXTI_GetPinState(enum EXTI_Interrupt i)
+{
+	return LL_GPIO_IsInputPinSet(GPIO_PORT[i], GPIO_PIN[i]);
+}
+
 void EXTI_SetCallback(enum EXTI_Interrupt i, void (*callback)(void *), void *ctx)
 {
 	cb[i] = callback;

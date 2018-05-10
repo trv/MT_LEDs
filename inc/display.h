@@ -1,7 +1,16 @@
 
 #include <stdint.h>
 
+enum ChargeColor {
+	ChargeColorNone,
+	ChargeColorRed,
+	ChargeColorYellow,
+	ChargeColorGreen,
+};
+
 void display_Init(void);
+
+void display_Charger(enum ChargeColor color);
 
 void display_Next(void);
 

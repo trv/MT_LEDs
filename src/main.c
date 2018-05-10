@@ -10,6 +10,7 @@
 #include "led.h"
 #include "display.h"
 #include "power.h"
+#include "battery.h"
 
 volatile uint32_t tick = 0;
 static uint32_t adcSamples[5];
@@ -52,8 +53,6 @@ void delay_ms(uint32_t ms)
 	while ((tick - now) <= ms);		//todo: __WFI(); ?
 }
 
-
-
 // called from accel_Poll() on main thread
 void clickHandler(void *ctx, enum ClickType type)
 {
@@ -78,6 +77,30 @@ void animateHandler(void *ctx, volatile uint8_t *accelData)
 	display_Update(accelData, &adcSamples[1]);
 }
 
+// called from interrupt context OR from Battery_UpdateVoltage
+void batteryUpdate(void *ctx, enum BatteryStatus status, uint32_t battery_mV)
+{
+    switch (status) {
+    case BatteryCritical:
+        EXTI_Stop();
+        Power_Shutdown(ShutdownReason_LowBattery);
+        break;
+    case BatteryLow:
+        display_Charger(ChargeColorRed);
+        break;
+    case BatteryNormal:
+    case BatteryUnknown:
+        display_Charger(ChargeColorNone);
+        break;
+    case BatteryCharging:
+        display_Charger(ChargeColorYellow);
+        break;
+    case BatteryFull:
+        display_Charger(ChargeColorGreen);
+        break;
+    }
+}
+
 int main(void)
 {
     uint8_t clickSrc = 0;
@@ -85,6 +108,12 @@ int main(void)
     SystemClock_Config();
     uint32_t powerStatus = Power_Init();
     EXTI_Config();
+
+    display_Init();
+
+    Battery_Init();
+    Battery_SetCallback(batteryUpdate, NULL);
+    batteryUpdate(NULL, Battery_GetStatus(), Battery_GetLevel_mV());
 
     adc_Init();
 
@@ -96,8 +125,6 @@ int main(void)
         i2c_read(I2C3, ACCEL_ADDR, 0x39, &clickSrc, 1);
     }
 
-    display_Init();
-
     accel_config_awake();
 
     uint32_t toggleTick = tick;
@@ -106,6 +133,7 @@ int main(void)
     	if ( (tick - toggleTick) >= 100) {
     		toggleTick += 100;
             adc_Sample(adcSamples);
+            Battery_UpdateVoltage(adcSamples[0]);
     	}
 
     	// handle single/double click events & data event

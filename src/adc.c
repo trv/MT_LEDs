@@ -9,7 +9,7 @@
 #define GPIOx				GPIOA
 
 #define VBAT_MEAS_EN_PORT	GPIOB
-#define VBAT_MEAS_EN_PIN	LL_GPIO_PIN_1
+#define VBAT_MEAS_EN_PIN	LL_GPIO_PIN_0
 
 static const uint32_t gpioPins[] = {
 	LL_GPIO_PIN_1,

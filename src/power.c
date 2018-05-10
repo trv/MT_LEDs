@@ -48,6 +48,7 @@ void Power_Shutdown(enum ShutdownReason reason)
     // LIPO_PG interrupt is always active
     // PA2: WKUP4 - Charger PG interrupt (with pull-up)
     LL_PWR_EnableGPIOPullUp(LL_PWR_GPIO_A, LL_PWR_GPIO_BIT_2);
+    LL_PWR_EnablePUPDCfg();
     LL_PWR_SetWakeUpPinPolarityLow(LL_PWR_WAKEUP_PIN4);
     LL_PWR_EnableWakeUpPin(LL_PWR_WAKEUP_PIN4);
 

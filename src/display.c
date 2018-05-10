@@ -24,6 +24,7 @@ static void i2cInit(I2C_TypeDef *I2Cx);
 static void refresh(void);
 static void writeFB(void);
 static void animateLEDs(int x, int y, uint8_t *c);
+static void getColor(uint8_t phase, uint8_t *c);
 
 static GPIO_TypeDef * const LEDx_PORT[] = {LED1_PORT, LED2_PORT};
 static I2C_TypeDef * const LEDx_I2C[] = {I2C1, I2C2};
@@ -34,23 +35,17 @@ static uint8_t fb[NUM_LED_DRIVERS*FRAME_SIZE*2];	// room for double-buffering
 
 static volatile uint8_t accelData[6];
 static uint32_t alsData = 0;
-static uint8_t currentPhase = 0;
+static uint8_t currentPhase = 256-4;
 static const uint8_t phaseSpeed = 4;
 //static const int panelPhase = 0x80;  // 1/4 of 256
 static const int redPhase = 170;
 static const int greenPhase = 85;
 static const int bluePhase = 0;
 
+static uint8_t colorPhase = 0;
+static uint8_t colorSpeed = 87;
 uint8_t refreshPending = 0;
-uint8_t animateIndex = 6;
-static const uint8_t animateColor[][3] = {
-		{255, 32, 32},
-		{192,192,  0},
-		{ 32,255, 32},
-		{  0,192,192},
-		{ 32, 32,255},
-		{192,  0,192}
-};
+uint8_t animateIndex = 0;
 
 static enum ChargeColor chgColor;
 
@@ -74,6 +69,7 @@ static const int8_t pY[] = {63,63,63,63,63,63,63,63,45,45,45,45,45,45,45,45,27,2
 static const uint8_t border[44] = {32,40,48,56,57,58,59,60,61,62,63,120,121,122,123,124,125,126,127,119,111,103,95,87,79,71,70,69,68,67,66,65,64,7,6,5,4,3,2,1,0,8,16,24};
 static const uint8_t center[128-44] = {33,34,42,41,49,50,51,43,35,36,37,45,44,52,53,54,55,47,46,38,39,96,97,105,104,112,113,114,115,107,106,98,99,100,101,109,108,116,117,118,110,102,94,86,78,77,76,84,85,93,92,91,90,82,83,75,74,73,72,80,81,89,88,31,30,22,23,15,14,13,12,20,21,29,28,27,19,11,10,9,17,18,26,25};
 static const uint8_t charger[2] = {24,32}; // final values: {76,127};
+static uint8_t chargerBackup[2][3];
 
 void display_Init(void)
 {
@@ -102,7 +98,27 @@ void display_Init(void)
 
 void display_Charger(enum ChargeColor color)
 {
+	if (chgColor == ChargeColorNone) {
+		for (int i = 0; i < sizeof(charger); i++) {
+			// save real color
+			chargerBackup[i][0] = fb[iR[charger[i]]];
+			chargerBackup[i][1] = fb[iG[charger[i]]];
+			chargerBackup[i][2] = fb[iB[charger[i]]];
+		}
+	}
+
+	if (color == ChargeColorNone) {
+		// restore overwritten pixels
+		for (int i = 0; i < sizeof(charger); i++) {
+			// save real color
+			fb[iR[charger[i]]] = chargerBackup[i][0];
+			fb[iG[charger[i]]] = chargerBackup[i][1];
+			fb[iB[charger[i]]] = chargerBackup[i][2];
+		}
+	}
+
 	chgColor = color;
+
 	refreshPending = 1;
 }
 
@@ -195,13 +211,16 @@ static void refresh(void)
 	if (animateIndex < 12) {
 		if (animateIndex & 0x01) {
 			if (refreshPending) {
-				refreshPending = 0;
 				writeFB();
 			}
 		} else {
 
-			const uint8_t *c1 = animateColor[(animateIndex/2)%6];
-			const uint8_t *c2 = animateColor[(animateIndex/2 + 1)%6];
+			uint8_t c1[3];
+			uint8_t c2[3];
+
+			getColor(colorPhase, c1);
+			getColor(colorPhase + colorSpeed, c2);
+
 			for (int i = 0; i < sizeof(border); i++) {
 				int j = border[i];
 				int32_t phase = currentPhase - (240*i)/sizeof(border);
@@ -213,8 +232,8 @@ static void refresh(void)
 				fb[iB[j]] = gB[(c1[2]*(255-transition) + c2[2]*transition) >> 8];
 			}
 
-			c1 = animateColor[(animateIndex/2 + 3)%6];
-			c2 = animateColor[(animateIndex/2 + 4)%6];
+			getColor(colorPhase + 128, c1);
+			getColor(colorPhase + colorSpeed + 128, c2);
 			for (int i = 0; i < sizeof(center); i++) {
 				int j = center[i];
 				int32_t phase = currentPhase - (240*i)/sizeof(center);
@@ -229,6 +248,7 @@ static void refresh(void)
 			currentPhase++;
 			if (currentPhase == 0) {
 				animateIndex++;
+				colorPhase += colorSpeed;
 			}
 		}
 	} else if (animateIndex == 6) {
@@ -250,6 +270,14 @@ static void writeFB(void)
 {
 	if (chgColor != ChargeColorNone) {
 		for (int i = 0; i < sizeof(charger); i++) {
+			if (!refreshPending) {
+				// save real color
+				chargerBackup[i][0] = fb[iR[charger[i]]];
+				chargerBackup[i][1] = fb[iG[charger[i]]];
+				chargerBackup[i][2] = fb[iB[charger[i]]];
+			}
+
+			// overwrite with charger indication
 			fb[iR[charger[i]]] = gR[(chgColor == ChargeColorGreen) ? 0 : 255];
 			fb[iG[charger[i]]] = gG[(chgColor == ChargeColorRed) ? 0 : 255];
 			fb[iB[charger[i]]] = gB[0];
@@ -258,6 +286,8 @@ static void writeFB(void)
 
 	LED_Update(&l[0], fb);
 	LED_Update(&l[1], &fb[FRAME_SIZE]);
+
+	refreshPending = 0;
 }
 
 static void animateLEDs(int x, int y, uint8_t *c)
@@ -273,7 +303,12 @@ static void animateLEDs(int x, int y, uint8_t *c)
 	} else if (offset < -127) {
 		offset = -127;
 	}
-	c[0] = sinTable[(uint8_t)(currentPhase + offset + redPhase)];
-	c[1] = sinTable[(uint8_t)(currentPhase + offset + greenPhase)];
-	c[2] = sinTable[(uint8_t)(currentPhase + offset + bluePhase)];
+	getColor(currentPhase + offset, c);
+}
+
+static void getColor(uint8_t phase, uint8_t *c)
+{
+	c[0] = sinTable[(uint8_t)(phase + redPhase)];
+	c[1] = sinTable[(uint8_t)(phase + greenPhase)];
+	c[2] = sinTable[(uint8_t)(phase + bluePhase)];
 }

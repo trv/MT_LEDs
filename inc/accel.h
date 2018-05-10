@@ -16,5 +16,6 @@ void accel_setClickHandler(clickHandlerCB cb, void *ctx);
 void accel_setDataHandler(dataHandlerCB cb, void *ctx);
 void accel_Poll(void);
 
-void accel_config_awake(void);
+void accel_config_shutdown(void);
 void accel_config_asleep(void);
+void accel_config_awake(void);

@@ -82,8 +82,12 @@ void batteryUpdate(void *ctx, enum BatteryStatus status, uint32_t battery_mV)
 {
     switch (status) {
     case BatteryCritical:
-        EXTI_Stop();
-        Power_Shutdown(ShutdownReason_LowBattery);
+        accel_config_shutdown();
+        // go to stop mode, loop to ensure no pending interrupts
+        while (1) {
+            EXTI_Stop();
+            Power_Shutdown(ShutdownReason_LowBattery);
+        }
         break;
     case BatteryLow:
         display_Charger(ChargeColorRed);

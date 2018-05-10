@@ -65,7 +65,9 @@ static void updateNormal(void)
 {
 	enum BatteryStatus newStatus = status;
 
-	if (battery_mV < SHUTDOWN_mV) {
+	if (battery_mV == 0) {
+		newStatus = BatteryUnknown;
+	} else if (battery_mV < SHUTDOWN_mV) {
 		newStatus = BatteryCritical;
 	} else if (battery_mV < LOWBATT_mV) {
 		newStatus = BatteryLow;

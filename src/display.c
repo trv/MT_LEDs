@@ -21,7 +21,7 @@
 
 static void gpioInit(GPIO_TypeDef *GPIOx, uint32_t sclPin, uint32_t sdaPin, uint32_t shdnPin);
 static void i2cInit(I2C_TypeDef *I2Cx);
-
+static void refresh(void);
 static void writeFB(void);
 static void animateLEDs(int x, int y, uint8_t *c);
 
@@ -44,12 +44,12 @@ static const int bluePhase = 0;
 uint8_t refreshPending = 0;
 uint8_t animateIndex = 6;
 static const uint8_t animateColor[][3] = {
-		{64,  0,  0},
-		{48, 48,  0},
-		{ 0, 64,  0},
-		{ 0, 48, 48},
-		{ 0,  0, 64},
-		{48,  0, 48}
+		{255, 32, 32},
+		{192,192,  0},
+		{ 32,255, 32},
+		{  0,192,192},
+		{ 32, 32,255},
+		{192,  0,192}
 };
 
 static enum ChargeColor chgColor;
@@ -73,7 +73,7 @@ static const int8_t pY[] = {63,63,63,63,63,63,63,63,45,45,45,45,45,45,45,45,27,2
 
 static const uint8_t border[44] = {32,40,48,56,57,58,59,60,61,62,63,120,121,122,123,124,125,126,127,119,111,103,95,87,79,71,70,69,68,67,66,65,64,7,6,5,4,3,2,1,0,8,16,24};
 static const uint8_t center[128-44] = {33,34,42,41,49,50,51,43,35,36,37,45,44,52,53,54,55,47,46,38,39,96,97,105,104,112,113,114,115,107,106,98,99,100,101,109,108,116,117,118,110,102,94,86,78,77,76,84,85,93,92,91,90,82,83,75,74,73,72,80,81,89,88,31,30,22,23,15,14,13,12,20,21,29,28,27,19,11,10,9,17,18,26,25};
-static const uint8_t charger[2] = {24,32}; // final values: ß{76,127};
+static const uint8_t charger[2] = {24,32}; // final values: {76,127};
 
 void display_Init(void)
 {
@@ -108,7 +108,7 @@ void display_Charger(enum ChargeColor color)
 
 void display_Next(void)
 {
-	animateIndex = (animateIndex + 1) % 8;
+	animateIndex = (animateIndex + 1) % 12;
 	currentPhase = 0;
 	refreshPending = 1;
 }
@@ -143,48 +143,7 @@ void display_Update(volatile uint8_t *accel, volatile uint32_t *als)
 	LED_SetBrightness(&l[0], globalBrightness);	// BLOCKING CALL
 	LED_SetBrightness(&l[1], (globalBrightness+7)/8);	// BLOCKING CALL
 
-	if (animateIndex < 6) {
-		if (refreshPending) {
-			refreshPending = 0;
-			for (int i = 0; i < NUM_LEDS; i++) {
-				fb[iR[i]] = animateColor[animateIndex][0];
-				fb[iG[i]] = animateColor[animateIndex][1];
-				fb[iB[i]] = animateColor[animateIndex][2];
-			}
-			writeFB();
-		}
-	} else if (animateIndex == 6) {
-		uint8_t c[3];
-		for (int i = 0; i < NUM_LEDS; i++) {
-			animateLEDs(pX[i], pY[i], c);
-			fb[iR[i]] = gR[c[0]];
-			fb[iG[i]] = gG[c[1]];
-			fb[iB[i]] = gB[c[2]];
-		}
-		writeFB();
-		currentPhase += phaseSpeed;
-	} else if (animateIndex == 7) {
-		for (int i = 0; i < sizeof(border); i++) {
-			int j = border[i];
-			int32_t phase = currentPhase - (240*i)/sizeof(border);
-			if (phase < 0) { phase = 0; }
-			if (phase > 15) { phase = 15; }
-			fb[iR[j]] = gR[transitionTable[phase]];
-			fb[iG[j]] = 0;
-			fb[iB[j]] = 0;
-		}
-		for (int i = 0; i < sizeof(center); i++) {
-			int j = center[i];
-			int32_t phase = currentPhase - (240*i)/sizeof(center);
-			if (phase < 0) { phase = 0; }
-			if (phase > 15) { phase = 15; }
-			fb[iR[j]] = 0;
-			fb[iG[j]] = 0;
-			fb[iB[j]] = gB[transitionTable[phase]];
-		}
-		writeFB();
-		currentPhase++;
-	}
+	refresh();
 }
 
 static void gpioInit(GPIO_TypeDef *GPIOx, uint32_t sclPin, uint32_t sdaPin, uint32_t shdnPin)
@@ -229,6 +188,62 @@ static void i2cInit(I2C_TypeDef *I2Cx)
     LL_I2C_Init(I2Cx, &i2cConfig);
 
     i2c_initNB(I2Cx);
+}
+
+static void refresh(void)
+{
+	if (animateIndex < 12) {
+		if (animateIndex & 0x01) {
+			if (refreshPending) {
+				refreshPending = 0;
+				writeFB();
+			}
+		} else {
+
+			const uint8_t *c1 = animateColor[(animateIndex/2)%6];
+			const uint8_t *c2 = animateColor[(animateIndex/2 + 1)%6];
+			for (int i = 0; i < sizeof(border); i++) {
+				int j = border[i];
+				int32_t phase = currentPhase - (240*i)/sizeof(border);
+				if (phase < 0) { phase = 0; }
+				if (phase > 15) { phase = 15; }
+				uint8_t transition = transitionTable[phase];
+				fb[iR[j]] = gR[(c1[0]*(255-transition) + c2[0]*transition) >> 8];
+				fb[iG[j]] = gG[(c1[1]*(255-transition) + c2[1]*transition) >> 8];
+				fb[iB[j]] = gB[(c1[2]*(255-transition) + c2[2]*transition) >> 8];
+			}
+
+			c1 = animateColor[(animateIndex/2 + 3)%6];
+			c2 = animateColor[(animateIndex/2 + 4)%6];
+			for (int i = 0; i < sizeof(center); i++) {
+				int j = center[i];
+				int32_t phase = currentPhase - (240*i)/sizeof(center);
+				if (phase < 0) { phase = 0; }
+				if (phase > 15) { phase = 15; }
+				uint8_t transition = transitionTable[phase];
+				fb[iR[j]] = gR[(c1[0]*(255-transition) + c2[0]*transition) >> 8];
+				fb[iG[j]] = gG[(c1[1]*(255-transition) + c2[1]*transition) >> 8];
+				fb[iB[j]] = gB[(c1[2]*(255-transition) + c2[2]*transition) >> 8];
+			}
+			writeFB();
+			currentPhase++;
+			if (currentPhase == 0) {
+				animateIndex++;
+			}
+		}
+	} else if (animateIndex == 6) {
+		uint8_t c[3];
+		for (int i = 0; i < NUM_LEDS; i++) {
+			animateLEDs(pX[i], pY[i], c);
+			fb[iR[i]] = gR[c[0]];
+			fb[iG[i]] = gG[c[1]];
+			fb[iB[i]] = gB[c[2]];
+		}
+		writeFB();
+		currentPhase += phaseSpeed;
+	} else if (animateIndex == 7) {
+
+	}
 }
 
 static void writeFB(void)

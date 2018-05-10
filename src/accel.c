@@ -100,6 +100,14 @@ void accel_Poll(void)
 
 }
 
+void accel_config_shutdown(void)
+{
+    uint8_t accel_config[] = {
+            0x00,       // CTRL_REG1 = shutdown mode
+    };
+    i2c_write(I2Cx, ACCEL_ADDR, 0x80 | 0x20, accel_config, 1);
+}
+
 void accel_config_asleep(void)
 {
     uint8_t click_config[] = {

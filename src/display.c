@@ -51,7 +51,7 @@ static enum ChargeColor chgColor;
 
 
 static const uint8_t sinTable[] = {128, 131, 134, 137, 140, 143, 146, 149, 152, 155, 158, 162, 165, 167, 170, 173, 176, 179, 182, 185, 188, 190, 193, 196, 198, 201, 203, 206, 208, 211, 213, 215, 218, 220, 222, 224, 226, 228, 230, 232, 234, 235, 237, 238, 240, 241, 243, 244, 245, 246, 248, 249, 250, 250, 251, 252, 253, 253, 254, 254, 254, 255, 255, 255, 255, 255, 255, 255, 254, 254, 254, 253, 253, 252, 251, 250, 250, 249, 248, 246, 245, 244, 243, 241, 240, 238, 237, 235, 234, 232, 230, 228, 226, 224, 222, 220, 218, 215, 213, 211, 208, 206, 203, 201, 198, 196, 193, 190, 188, 185, 182, 179, 176, 173, 170, 167, 165, 162, 158, 155, 152, 149, 146, 143, 140, 137, 134, 131, 128, 124, 121, 118, 115, 112, 109, 106, 103, 100, 97, 93, 90, 88, 85, 82, 79, 76, 73, 70, 67, 65, 62, 59, 57, 54, 52, 49, 47, 44, 42, 40, 37, 35, 33, 31, 29, 27, 25, 23, 21, 20, 18, 17, 15, 14, 12, 11, 10, 9, 7, 6, 5, 5, 4, 3, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 3, 4, 5, 5, 6, 7, 9, 10, 11, 12, 14, 15, 17, 18, 20, 21, 23, 25, 27, 29, 31, 33, 35, 37, 40, 42, 44, 47, 49, 52, 54, 57, 59, 62, 65, 67, 70, 73, 76, 79, 82, 85, 88, 90, 93, 97, 100, 103, 106, 109, 112, 115, 118, 121, 124};
-static const uint8_t transitionTable[16] = {0,2,10,21,37,57,79,103,128,152,176,198,218,234,245,253};
+static const uint8_t transitionTable[17] = {0,2,10,21,37,57,79,103,128,152,176,198,218,234,245,253,255};
 
 // per-channel gamma correction
 static const uint8_t gR[] = {0,0,0,0,1,1,1,1,1,1,1,2,2,2,2,2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,5,5,5,5,5,6,6,6,6,6,7,7,7,7,7,8,8,8,8,8,9,9,9,9,10,10,10,10,11,11,11,11,12,12,12,12,13,13,13,13,14,14,14,15,15,15,16,16,16,16,17,17,17,18,18,18,19,19,19,20,20,20,21,21,21,22,22,23,23,23,24,24,25,25,25,26,26,27,27,27,28,28,29,29,30,30,31,31,31,32,32,33,33,34,34,35,35,36,36,37,38,38,39,39,40,40,41,41,42,43,43,44,44,45,46,46,47,48,48,49,50,50,51,52,52,53,54,54,55,56,57,57,58,59,60,60,61,62,63,64,65,65,66,67,68,69,70,71,72,72,73,74,75,76,77,78,79,80,81,82,83,84,85,86,87,88,90,91,92,93,94,95,96,98,99,100,101,102,104,105,106,108,109,110,112,113,114,116,117,118,120,121,123,124,126,127,129,130,132,133,135,137,138,140,142,143,145,147,148,150,152,154,156,157,159,161,163,165,167,169,171,173,175,177,179,181};
@@ -206,6 +206,20 @@ static void i2cInit(I2C_TypeDef *I2Cx)
     i2c_initNB(I2Cx);
 }
 
+static void drawWave(uint8_t phase, uint8_t *c1, uint8_t *c2, const uint8_t *index, uint8_t size)
+{
+	for (int i = 0; i < size; i++) {
+		int j = index[i];
+		int32_t activePhase = phase - (240*i)/size;
+		if (activePhase >= 0 && activePhase <= 16) {
+			uint8_t transition = transitionTable[activePhase];
+			fb[iR[j]] = gR[(c1[0]*(255-transition) + c2[0]*transition) >> 8];
+			fb[iG[j]] = gG[(c1[1]*(255-transition) + c2[1]*transition) >> 8];
+			fb[iB[j]] = gB[(c1[2]*(255-transition) + c2[2]*transition) >> 8];
+		}
+	}
+}
+
 static void refresh(void)
 {
 	if (animateIndex < 12) {
@@ -220,20 +234,12 @@ static void refresh(void)
 
 			getColor(colorPhase, c1);
 			getColor(colorPhase + colorSpeed, c2);
-
-			for (int i = 0; i < sizeof(border); i++) {
-				int j = border[i];
-				int32_t phase = currentPhase - (240*i)/sizeof(border);
-				if (phase < 0) { phase = 0; }
-				if (phase > 15) { phase = 15; }
-				uint8_t transition = transitionTable[phase];
-				fb[iR[j]] = gR[(c1[0]*(255-transition) + c2[0]*transition) >> 8];
-				fb[iG[j]] = gG[(c1[1]*(255-transition) + c2[1]*transition) >> 8];
-				fb[iB[j]] = gB[(c1[2]*(255-transition) + c2[2]*transition) >> 8];
-			}
+			drawWave(currentPhase, c1, c2, border, sizeof(border));
 
 			getColor(colorPhase + 128, c1);
 			getColor(colorPhase + colorSpeed + 128, c2);
+			drawWave(currentPhase, c1, c2, center, sizeof(center));
+/*
 			for (int i = 0; i < sizeof(center); i++) {
 				int j = center[i];
 				int32_t phase = currentPhase - (240*i)/sizeof(center);
@@ -243,9 +249,9 @@ static void refresh(void)
 				fb[iR[j]] = gR[(c1[0]*(255-transition) + c2[0]*transition) >> 8];
 				fb[iG[j]] = gG[(c1[1]*(255-transition) + c2[1]*transition) >> 8];
 				fb[iB[j]] = gB[(c1[2]*(255-transition) + c2[2]*transition) >> 8];
-			}
+			}*/
 			writeFB();
-			currentPhase++;
+			currentPhase += 2;
 			if (currentPhase == 0) {
 				animateIndex++;
 				colorPhase += colorSpeed;

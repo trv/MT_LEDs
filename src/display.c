@@ -26,6 +26,10 @@ static void writeFB(void);
 static void animateLEDs(int x, int y, uint8_t *c);
 static void getColor(uint8_t phase, uint8_t *c);
 
+static void fillAll(uint8_t *c, const uint8_t *index, uint8_t size);
+static void drawWave(uint8_t phase, uint8_t *c1, uint8_t *c2, const uint8_t *index, uint8_t size);
+
+
 static GPIO_TypeDef * const LEDx_PORT[] = {LED1_PORT, LED2_PORT};
 static I2C_TypeDef * const LEDx_I2C[] = {I2C1, I2C2};
 static const uint32_t LEDx_SHDN_PIN[] = {LED1_SHDN_PIN, LED2_SHDN_PIN};
@@ -35,17 +39,19 @@ static uint8_t fb[NUM_LED_DRIVERS*FRAME_SIZE*2];	// room for double-buffering
 
 static volatile uint8_t accelData[6];
 static uint32_t alsData = 0;
-static uint8_t currentPhase = 256-4;
+#define NUM_WAVES	16
+static uint8_t currentPhase[NUM_WAVES] = {0};
+static const uint8_t waveSpeed = 2;
 static const uint8_t phaseSpeed = 4;
 //static const int panelPhase = 0x80;  // 1/4 of 256
 static const int redPhase = 170;
-static const int greenPhase = 85;
+static const int greenPhase = 95;
 static const int bluePhase = 0;
 
-static uint8_t colorPhase = 0;
-static uint8_t colorSpeed = 87;
+static uint8_t colorPhase = 42;
+static uint8_t colorSpeed = 95;
 uint8_t refreshPending = 0;
-uint8_t animateIndex = 0;
+uint8_t animateIndex = 1;
 
 static enum ChargeColor chgColor;
 
@@ -94,6 +100,13 @@ void display_Init(void)
 	}
 
 	chgColor = ChargeColorNone;
+
+	uint8_t c[3];
+	getColor(colorPhase, c);
+	fillAll(c, border, sizeof(border));
+	getColor(colorPhase + 128, c);
+	fillAll(c, center, sizeof(center));
+	refreshPending = 1;
 }
 
 void display_Charger(enum ChargeColor color)
@@ -125,7 +138,12 @@ void display_Charger(enum ChargeColor color)
 void display_Next(void)
 {
 	animateIndex = (animateIndex + 1) % 12;
-	currentPhase = 0;
+	for (int i = 0; i < NUM_WAVES; i++) {
+		if (currentPhase[i] == 0) {
+			currentPhase[i] = waveSpeed;
+			break;
+		}
+	}
 	refreshPending = 1;
 }
 
@@ -220,10 +238,21 @@ static void drawWave(uint8_t phase, uint8_t *c1, uint8_t *c2, const uint8_t *ind
 	}
 }
 
+static void fillAll(uint8_t *c, const uint8_t *index, uint8_t size)
+{
+	for (int i = 0; i < size; i++) {
+		int j = index[i];
+
+		fb[iR[j]] = gR[c[0]];
+		fb[iG[j]] = gG[c[1]];
+		fb[iB[j]] = gB[c[2]];
+	}
+}
+
 static void refresh(void)
 {
 	if (animateIndex < 12) {
-		if (animateIndex & 0x01) {
+		if (currentPhase[0] == 0) {
 			if (refreshPending) {
 				writeFB();
 			}
@@ -232,30 +261,29 @@ static void refresh(void)
 			uint8_t c1[3];
 			uint8_t c2[3];
 
-			getColor(colorPhase, c1);
-			getColor(colorPhase + colorSpeed, c2);
-			drawWave(currentPhase, c1, c2, border, sizeof(border));
+			for (int i = 0; i < NUM_WAVES; i++) {
+				if (currentPhase[i] == 0) { break; }
+				getColor(colorPhase + colorSpeed*i, c1);
+				getColor(colorPhase + colorSpeed*(i+1), c2);
+				drawWave(currentPhase[i], c1, c2, border, sizeof(border));
 
-			getColor(colorPhase + 128, c1);
-			getColor(colorPhase + colorSpeed + 128, c2);
-			drawWave(currentPhase, c1, c2, center, sizeof(center));
-/*
-			for (int i = 0; i < sizeof(center); i++) {
-				int j = center[i];
-				int32_t phase = currentPhase - (240*i)/sizeof(center);
-				if (phase < 0) { phase = 0; }
-				if (phase > 15) { phase = 15; }
-				uint8_t transition = transitionTable[phase];
-				fb[iR[j]] = gR[(c1[0]*(255-transition) + c2[0]*transition) >> 8];
-				fb[iG[j]] = gG[(c1[1]*(255-transition) + c2[1]*transition) >> 8];
-				fb[iB[j]] = gB[(c1[2]*(255-transition) + c2[2]*transition) >> 8];
-			}*/
-			writeFB();
-			currentPhase += 2;
-			if (currentPhase == 0) {
-				animateIndex++;
-				colorPhase += colorSpeed;
+				getColor(colorPhase + colorSpeed*i + 128, c1);
+				getColor(colorPhase + colorSpeed*(i+1) + 128, c2);
+				drawWave(currentPhase[i], c1, c2, center, sizeof(center));
+
+				currentPhase[i] += waveSpeed;
+				if (currentPhase[i] < waveSpeed) {
+					// shift down the rest of things
+					for (int j = i; j+1 < NUM_WAVES; j++) {
+						currentPhase[j] = currentPhase[j+1];
+					}
+					i--;
+					colorPhase += colorSpeed;
+				}
 			}
+
+			writeFB();
+
 		}
 	} else if (animateIndex == 6) {
 		uint8_t c[3];
@@ -266,7 +294,7 @@ static void refresh(void)
 			fb[iB[i]] = gB[c[2]];
 		}
 		writeFB();
-		currentPhase += phaseSpeed;
+		currentPhase[0] += phaseSpeed;
 	} else if (animateIndex == 7) {
 
 	}
@@ -309,7 +337,7 @@ static void animateLEDs(int x, int y, uint8_t *c)
 	} else if (offset < -127) {
 		offset = -127;
 	}
-	getColor(currentPhase + offset, c);
+	getColor(currentPhase[0] + offset, c);
 }
 
 static void getColor(uint8_t phase, uint8_t *c)

@@ -37,11 +37,12 @@ static const uint32_t LEDx_SHDN_PIN[] = {LED1_SHDN_PIN, LED2_SHDN_PIN};
 static struct LED l[NUM_LED_DRIVERS];
 static uint8_t fb[NUM_LED_DRIVERS*FRAME_SIZE*2];	// room for double-buffering
 
-static volatile uint8_t accelData[6];
+static volatile int8_t accelData[6];
 static uint32_t alsData = 0;
 #define NUM_WAVES	16
-static uint8_t currentPhase[NUM_WAVES] = {0};
+static uint8_t wavePhase[NUM_WAVES] = {0};
 static const uint8_t waveSpeed = 2;
+static uint8_t currentPhase = 0;
 static const uint8_t phaseSpeed = 4;
 //static const int panelPhase = 0x80;  // 1/4 of 256
 static const int redPhase = 170;
@@ -72,9 +73,17 @@ static const uint16_t iB[] = {144,145,146,147,148,149,150,151,152,153,154,155,15
 static const int8_t pX[] = {-127,-109,-91,-73,-55,-37,-19,-1,-127,-109,-91,-73,-55,-37,-19,-1,-127,-109,-91,-73,-55,-37,-19,-1,-127,-109,-91,-73,-55,-37,-19,-1,-127,-109,-91,-73,-55,-37,-19,-1,-127,-109,-91,-73,-55,-37,-19,-1,-127,-109,-91,-73,-55,-37,-19,-1,-127,-109,-91,-73,-55,-37,-19,-1,1,19,37,55,73,91,109,127,1,19,37,55,73,91,109,127,1,19,37,55,73,91,109,127,1,19,37,55,73,91,109,127,1,19,37,55,73,91,109,127,1,19,37,55,73,91,109,127,1,19,37,55,73,91,109,127,1,19,37,55,73,91,109,127};
 static const int8_t pY[] = {63,63,63,63,63,63,63,63,45,45,45,45,45,45,45,45,27,27,27,27,27,27,27,27,9,9,9,9,9,9,9,9,-9,-9,-9,-9,-9,-9,-9,-9,-27,-27,-27,-27,-27,-27,-27,-27,-45,-45,-45,-45,-45,-45,-45,-45,-63,-63,-63,-63,-63,-63,-63,-63,63,63,63,63,63,63,63,63,45,45,45,45,45,45,45,45,27,27,27,27,27,27,27,27,9,9,9,9,9,9,9,9,-9,-9,-9,-9,-9,-9,-9,-9,-27,-27,-27,-27,-27,-27,-27,-27,-45,-45,-45,-45,-45,-45,-45,-45,-63,-63,-63,-63,-63,-63,-63,-63};
 
-static const uint8_t border[44] = {32,40,48,56,57,58,59,60,61,62,63,120,121,122,123,124,125,126,127,119,111,103,95,87,79,71,70,69,68,67,66,65,64,7,6,5,4,3,2,1,0,8,16,24};
-static const uint8_t center[128-44] = {33,34,42,41,49,50,51,43,35,36,37,45,44,52,53,54,55,47,46,38,39,96,97,105,104,112,113,114,115,107,106,98,99,100,101,109,108,116,117,118,110,102,94,86,78,77,76,84,85,93,92,91,90,82,83,75,74,73,72,80,81,89,88,31,30,22,23,15,14,13,12,20,21,29,28,27,19,11,10,9,17,18,26,25};
-static const uint8_t charger[2] = {24,32}; // final values: {76,127};
+// actual coaster:
+static const uint8_t border[] = {127,126,125,124,123,122,121,120,119,118,117,116,115,114,113,112,111,110,109,108,107,106,105,104,103,102,101,100,99,98,97,96,95,94,93,92,91,90,89,88,87,86,85,84,83,82,81,80,79,78,77,76};
+//static const uint8_t center[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75};
+static const uint8_t center[] = {3,2,1,0,4,5,6,7,8,9,10,11,12,13,17,16,15,14,22,21,20,19,23,24,25,26,27,38,37,36,35,34,28,29,30,31,32,33,39,41,43,44,45,46,40,42,50,49,48,47,51,52,53,54,55,60,59,58,57,56,61,62,63,64,65,66,75,74,73,72,71,70,69,68,67,18};
+static const uint8_t charger[2] = {76,127};
+
+// test boards
+// static const uint8_t border[44] = {32,40,48,56,57,58,59,60,61,62,63,120,121,122,123,124,125,126,127,119,111,103,95,87,79,71,70,69,68,67,66,65,64,7,6,5,4,3,2,1,0,8,16,24};
+// static const uint8_t center[128-44] = {33,34,42,41,49,50,51,43,35,36,37,45,44,52,53,54,55,47,46,38,39,96,97,105,104,112,113,114,115,107,106,98,99,100,101,109,108,116,117,118,110,102,94,86,78,77,76,84,85,93,92,91,90,82,83,75,74,73,72,80,81,89,88,31,30,22,23,15,14,13,12,20,21,29,28,27,19,11,10,9,17,18,26,25};
+// static const uint8_t charger[2] = {24,32}; // final values: {76,127};
+
 static uint8_t chargerBackup[2][3];
 
 void display_Init(void)
@@ -139,8 +148,8 @@ void display_Next(void)
 {
 	animateIndex = (animateIndex + 1) % 12;
 	for (int i = 0; i < NUM_WAVES; i++) {
-		if (currentPhase[i] == 0) {
-			currentPhase[i] = waveSpeed;
+		if (wavePhase[i] == 0) {
+			wavePhase[i] = waveSpeed;
 			break;
 		}
 	}
@@ -175,7 +184,8 @@ void display_Update(volatile uint8_t *accel, volatile uint32_t *als)
 		globalBrightness = 255;
 	}
 	LED_SetBrightness(&l[0], globalBrightness);	// BLOCKING CALL
-	LED_SetBrightness(&l[1], (globalBrightness+7)/8);	// BLOCKING CALL
+	LED_SetBrightness(&l[1], globalBrightness);	// BLOCKING CALL
+	//LED_SetBrightness(&l[1], (globalBrightness+7)/8);	// BLOCKING CALL
 
 	refresh();
 }
@@ -251,8 +261,16 @@ static void fillAll(uint8_t *c, const uint8_t *index, uint8_t size)
 
 static void refresh(void)
 {
-	if (animateIndex < 12) {
-		if (currentPhase[0] == 0) {
+	uint32_t tilt = accelData[1] * accelData[1] + accelData[3] * accelData[3];
+	uint32_t mag = tilt + accelData[5] * accelData[5];
+	const uint32_t mag_typical = 0x40*0x40;	// x^2 + y^2 + z^2 == g^2
+	const uint32_t mag_epsilion = (mag_typical+25) / 50;	// 2% error
+
+	const uint32_t tilt_limit = (0x40 * 0x40)*(25 * 25)/10000;
+
+	if ( tilt < tilt_limit ||  !((mag_typical - mag_epsilion) < mag && mag < (mag_typical + mag_epsilion)) || wavePhase[0] != 0) {
+		// mostly flat
+		if (wavePhase[0] == 0) {
 			if (refreshPending) {
 				writeFB();
 			}
@@ -262,20 +280,20 @@ static void refresh(void)
 			uint8_t c2[3];
 
 			for (int i = 0; i < NUM_WAVES; i++) {
-				if (currentPhase[i] == 0) { break; }
+				if (wavePhase[i] == 0) { break; }
 				getColor(colorPhase + colorSpeed*i, c1);
 				getColor(colorPhase + colorSpeed*(i+1), c2);
-				drawWave(currentPhase[i], c1, c2, border, sizeof(border));
+				drawWave(wavePhase[i], c1, c2, border, sizeof(border));
 
 				getColor(colorPhase + colorSpeed*i + 128, c1);
 				getColor(colorPhase + colorSpeed*(i+1) + 128, c2);
-				drawWave(currentPhase[i], c1, c2, center, sizeof(center));
+				drawWave(wavePhase[i], c1, c2, center, sizeof(center));
 
-				currentPhase[i] += waveSpeed;
-				if (currentPhase[i] < waveSpeed) {
+				wavePhase[i] += waveSpeed;
+				if (wavePhase[i] < waveSpeed) {
 					// shift down the rest of things
 					for (int j = i; j+1 < NUM_WAVES; j++) {
-						currentPhase[j] = currentPhase[j+1];
+						wavePhase[j] = wavePhase[j+1];
 					}
 					i--;
 					colorPhase += colorSpeed;
@@ -285,7 +303,7 @@ static void refresh(void)
 			writeFB();
 
 		}
-	} else if (animateIndex == 6) {
+	} else {
 		uint8_t c[3];
 		for (int i = 0; i < NUM_LEDS; i++) {
 			animateLEDs(pX[i], pY[i], c);
@@ -294,9 +312,7 @@ static void refresh(void)
 			fb[iB[i]] = gB[c[2]];
 		}
 		writeFB();
-		currentPhase[0] += phaseSpeed;
-	} else if (animateIndex == 7) {
-
+		currentPhase += phaseSpeed;
 	}
 }
 
@@ -337,7 +353,7 @@ static void animateLEDs(int x, int y, uint8_t *c)
 	} else if (offset < -127) {
 		offset = -127;
 	}
-	getColor(currentPhase[0] + offset, c);
+	getColor(currentPhase + offset, c);
 }
 
 static void getColor(uint8_t phase, uint8_t *c)

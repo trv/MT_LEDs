@@ -52,7 +52,6 @@ static const int bluePhase = 0;
 static uint8_t colorPhase = 42;
 static uint8_t colorSpeed = 95;
 uint8_t refreshPending = 0;
-uint8_t animateIndex = 1;
 int8_t isTilted = 0;
 
 static enum ChargeColor chgColor;
@@ -77,7 +76,7 @@ static const int8_t pY[] = {37,37,37,37,31,26,24,24,24,18,12,11,11,11,0,0,0,0,0,
 static const uint8_t border[] = {127,126,125,124,123,122,121,120,119,118,117,116,115,114,113,112,111,110,109,108,107,106,105,104,103,102,101,100,99,98,97,96,95,94,93,92,91,90,89,88,87,86,85,84,83,82,81,80,79,78,77,76};
 //static const uint8_t center[] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,69,70,71,72,73,74,75};
 static const uint8_t center[] = {3,2,1,0,4,5,6,7,8,9,10,11,12,13,17,16,15,14,22,21,20,19,23,24,25,26,27,38,37,36,35,34,28,29,30,31,32,33,39,41,43,44,45,46,40,42,50,49,48,47,51,52,53,54,55,60,59,58,57,56,61,62,63,64,65,66,75,74,73,72,71,70,69,68,67,18};
-static const uint8_t charger[2] = {76,127};
+static const uint8_t charger[4] = {77,76,127,126};
 
 // test boards
 // LED position and channel index info
@@ -92,7 +91,7 @@ static const uint8_t charger[2] = {76,127};
 // static const uint8_t center[128-44] = {33,34,42,41,49,50,51,43,35,36,37,45,44,52,53,54,55,47,46,38,39,96,97,105,104,112,113,114,115,107,106,98,99,100,101,109,108,116,117,118,110,102,94,86,78,77,76,84,85,93,92,91,90,82,83,75,74,73,72,80,81,89,88,31,30,22,23,15,14,13,12,20,21,29,28,27,19,11,10,9,17,18,26,25};
 // static const uint8_t charger[2] = {24,32}; // final values: {76,127};
 
-static uint8_t chargerBackup[2][3];
+static uint8_t chargerBackup[4][3];
 
 void display_Init(void)
 {
@@ -154,11 +153,12 @@ void display_Charger(enum ChargeColor color)
 
 void display_Next(void)
 {
-	animateIndex = (animateIndex + 1) % 12;
-	for (int i = 0; i < NUM_WAVES; i++) {
-		if (wavePhase[i] == 0) {
-			wavePhase[i] = waveSpeed;
-			break;
+	if (isTilted < 50) {
+		for (int i = 0; i < NUM_WAVES; i++) {
+			if (wavePhase[i] == 0) {
+				wavePhase[i] = waveSpeed;
+				break;
+			}
 		}
 	}
 	refreshPending = 1;
@@ -186,7 +186,7 @@ void display_Update(volatile uint8_t *accel, volatile uint32_t *als)
 	// max data = (2^18-1) * 1.6 / 1.8 = 233016
 	// min data = (2^18-1) * 0.005 / 1.8 ~= 728
 	// global brightness range = 1-255
-	uint16_t globalBrightness = 1 + (alsData / 800);
+	uint16_t globalBrightness = 1 + (alsData / 600);
 	if (globalBrightness > 255) {
 		// saturate to 8-bit
 		globalBrightness = 255;
@@ -317,6 +317,7 @@ static void refresh(void)
 					}
 					i--;
 					colorPhase += colorSpeed;
+					currentPhase = colorPhase + 128;
 				}
 			}
 
@@ -333,6 +334,7 @@ static void refresh(void)
 		}
 		writeFB();
 		currentPhase += phaseSpeed;
+		colorPhase = currentPhase + 128;
 	}
 }
 

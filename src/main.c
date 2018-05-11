@@ -111,6 +111,7 @@ int main(void)
 
     SystemClock_Config();
     uint32_t powerStatus = Power_Init();
+    delay_ms(100);
     EXTI_Config();
 
     display_Init();

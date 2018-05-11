@@ -7,6 +7,7 @@ struct transfer {
 	uint8_t len;
 	uint8_t i;
 	volatile uint8_t *data;
+	uint8_t devAddr;
 };
 
 static const uint32_t FLAG_MASK = I2C_ISR_TXIS | I2C_ISR_RXNE | I2C_ISR_NACKF
@@ -112,6 +113,7 @@ int i2c_writeNB(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, uint8_t *da
 	xfer[i].len = len;
 	xfer[i].i = 0;
 	xfer[i].data = data;
+	xfer[i].devAddr = devAddr;
 
     LL_I2C_ClearFlag_STOP(I2Cx);
     LL_I2C_ClearFlag_NACK(I2Cx);
@@ -138,6 +140,7 @@ int i2c_readNB(I2C_TypeDef *I2Cx, uint8_t devAddr, uint8_t subAddr, volatile uin
 	xfer[i].len = len;
 	xfer[i].i = 0;
 	xfer[i].data = data;
+	xfer[i].devAddr = devAddr;
 
     LL_I2C_ClearFlag_STOP(I2Cx);
     LL_I2C_ClearFlag_NACK(I2Cx);
@@ -169,7 +172,7 @@ void I2C_EV_IRQHandler(I2C_TypeDef *I2Cx, struct transfer *t)
 	    LL_I2C_ClearFlag_STOP(I2Cx);
 	    if (t->cb) { t->cb(t->ctx); }
 	} else if (flags & I2C_ISR_TC) {
-	    LL_I2C_HandleTransfer(I2Cx, 0x30, LL_I2C_ADDRSLAVE_7BIT, t->len, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
+	    LL_I2C_HandleTransfer(I2Cx, t->devAddr, LL_I2C_ADDRSLAVE_7BIT, t->len, LL_I2C_MODE_AUTOEND, LL_I2C_GENERATE_START_READ);
 	    LL_I2C_DisableIT_TC(I2Cx);
 	    LL_I2C_EnableIT_RX(I2Cx);
 	} else if (flags & I2C_ISR_RXNE) {

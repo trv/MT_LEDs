@@ -21,6 +21,7 @@ static volatile uint8_t doubleClickPending = 0;
 static volatile uint8_t dataPending = 0;
 
 static volatile uint8_t accelData[6];
+static volatile int16_t accelDataLP[3];
 
 static clickHandlerCB *clickCB = NULL;
 static void *clickCtx = NULL;
@@ -65,6 +66,7 @@ void accel_Init(void)
 
     i2c_initNB(I2Cx);
 
+    memset(accelDataLP, 0, sizeof(accelDataLP));
 	// config INT1/INT2 interrupts
 
     EXTI_SetCallback(ACCEL_INT1, accel_int1_handler, NULL);
@@ -116,9 +118,9 @@ void accel_config_shutdown(void)
 void accel_config_asleep(void)
 {
     uint8_t click_config[] = {
-    		0x2A,		// CLICK_CFG = enable double tap on XYZ
+    		0x02, //0x2A,		// CLICK_CFG = enable double tap on XYZ
 			0x00,		// read-only CLICK_SRC
-			0x10,		// CLICK_THS = threshold
+			0x0C,		// CLICK_THS = threshold
 			0x08,		// TIME_LIMIT
 			0x04,		// TIME_LATENCY
 			0x0C,		// TIME_WINDOW
@@ -139,12 +141,12 @@ void accel_config_asleep(void)
 void accel_config_awake(void)
 {
     uint8_t click_config[] = {
-    		0x15,		// CLICK_CFG = enable single tap on XYZ
+    		0x01, //0x15,		// CLICK_CFG = enable single tap on XYZ
 			0x00,		// read-only CLICK_SRC
 			0x0C,		// CLICK_THS = threshold
 			0x08,		// TIME_LIMIT
 			0x01,		// TIME_LATENCY
-			0x08,		// TIME_WINDOW
+			0x0C,		// TIME_WINDOW
     };
     i2c_write(I2Cx, ACCEL_ADDR, 0x80 | 0x38, click_config, 6);
 
@@ -167,9 +169,9 @@ void clickReadHandler(void *ctx)
     if (clickSrc & 0x40) {
     	// interrupt active
     	if ((tick - lastClick) < doubleTapTime) {
-            if (singleClickPending) {
-                singleClickPending = 0;
-                doubleClickPending = 1;
+    		if (singleClickPending) {
+				singleClickPending = 0;
+				doubleClickPending = 1;
             } else if (doubleClickPending) {
                 // emergency shutdown
                 Power_Shutdown(ShutdownReason_Lockup);
@@ -189,6 +191,7 @@ void accel_int2_handler(void *ctx)
 
 void dataReadHandler(void *ctx)
 {
+
 	dataPending = 1;
 	if (clickReadPendingFlag) {
     	clickReadPendingFlag = 0;

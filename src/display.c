@@ -190,10 +190,8 @@ void display_Update(volatile uint8_t *accel, volatile uint32_t *als)
 		// saturate to 8-bit
 		globalBrightness = 255;
 	}
-	globalBrightness = 0x40;
 	LED_SetBrightness(&l[0], globalBrightness);	// BLOCKING CALL
 	LED_SetBrightness(&l[1], globalBrightness);	// BLOCKING CALL
-	//LED_SetBrightness(&l[1], (globalBrightness+7)/8);	// BLOCKING CALL
 
 	refresh();
 }

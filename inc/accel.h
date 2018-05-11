@@ -1,7 +1,7 @@
 
 #include <stdint.h>
 
-#define ACCEL_ADDR		0x30
+#define ACCEL_ADDR		0x32
 
 enum ClickType {
 	ClickSingle,

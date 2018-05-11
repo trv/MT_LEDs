@@ -102,8 +102,9 @@ void adc_Init(void)
 	LL_ADC_StartCalibration(ADC1, LL_ADC_SINGLE_ENDED);
 	while (LL_ADC_IsCalibrationOnGoing(ADC1));
 
-	LL_ADC_Enable(ADC1);
-	while (!LL_ADC_IsActiveFlag_ADRDY(ADC1));
+	while (!LL_ADC_IsActiveFlag_ADRDY(ADC1)) {
+		LL_ADC_Enable(ADC1);
+	}
 
 }
 

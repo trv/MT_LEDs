@@ -46,7 +46,7 @@ void accel_Init(void)
     gpioConfig.Pin = LL_GPIO_PIN_7;
     gpioConfig.Speed = LL_GPIO_SPEED_FREQ_LOW;
     gpioConfig.Mode = LL_GPIO_MODE_ALTERNATE;
-    gpioConfig.Pull = LL_GPIO_PULL_UP;
+    gpioConfig.Pull = LL_GPIO_PULL_NO;
     gpioConfig.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
     gpioConfig.Alternate = LL_GPIO_AF_4;
 

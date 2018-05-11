@@ -190,6 +190,7 @@ void display_Update(volatile uint8_t *accel, volatile uint32_t *als)
 		// saturate to 8-bit
 		globalBrightness = 255;
 	}
+	globalBrightness = 0x40;
 	LED_SetBrightness(&l[0], globalBrightness);	// BLOCKING CALL
 	LED_SetBrightness(&l[1], globalBrightness);	// BLOCKING CALL
 	//LED_SetBrightness(&l[1], (globalBrightness+7)/8);	// BLOCKING CALL
@@ -205,7 +206,7 @@ static void gpioInit(GPIO_TypeDef *GPIOx, uint32_t sclPin, uint32_t sdaPin, uint
     LL_GPIO_StructInit(&gpioConfig);
     gpioConfig.Speed = LL_GPIO_SPEED_HIGH;
     gpioConfig.Mode = LL_GPIO_MODE_ALTERNATE;
-    gpioConfig.Pull = LL_GPIO_PULL_UP;			    // do we need internal pull--ups?
+    gpioConfig.Pull = LL_GPIO_PULL_NO;
     gpioConfig.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
     gpioConfig.Alternate = LL_GPIO_AF_4;
 

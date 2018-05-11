@@ -16,7 +16,7 @@ uint32_t Power_Init(void)
     uint32_t status = PWR->SR1;
 
     // turn on 5V regulator
-
+    LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
     LL_GPIO_ResetOutputPin(EN_5V_PORT, EN_5V_PIN);
 
     LL_GPIO_InitTypeDef gpioConfig;

@@ -53,6 +53,7 @@ static uint8_t colorPhase = 42;
 static uint8_t colorSpeed = 95;
 uint8_t refreshPending = 0;
 uint8_t animateIndex = 1;
+int8_t isTilted = 0;
 
 static enum ChargeColor chgColor;
 
@@ -272,9 +273,22 @@ static void refresh(void)
 	const uint32_t mag_typical = 0x40*0x40;	// x^2 + y^2 + z^2 == g^2
 	const uint32_t mag_epsilion = (mag_typical+10) / 20;	// 5% error
 
-	const uint32_t tilt_limit = (mag)*(10 * 10)/10000;
+	uint32_t tilt_limit = (mag)*(10 * 10)/10000;
+	if ( (mag_typical - mag_epsilion) < mag && mag < (mag_typical + mag_epsilion) ) {
+		if (tilt > tilt_limit) {
+			isTilted++;
+			if (isTilted > 10) {
+				isTilted = 100;
+			}
+		} else {
+			isTilted--;
+			if (isTilted < 90) {
+				isTilted = 0;
+			}
+		}
+	}
 
-	if ( tilt < tilt_limit ||  !((mag_typical - mag_epsilion) < mag && mag < (mag_typical + mag_epsilion)) || wavePhase[0] != 0) {
+	if ( isTilted < 50 || wavePhase[0] != 0) {
 		// mostly flat
 		if (wavePhase[0] == 0) {
 			if (refreshPending) {
@@ -350,7 +364,7 @@ static void animateLEDs(int x, int y, uint8_t *c)
 {
 	// grab the latest accelData TODO: make atomic and/or double-buffer accelData
 	int8_t Ax = accelData[1];
-	int8_t Ay = accelData[3];
+	int8_t Ay = -accelData[3];
 	//int8_t Az = accelData[5];
 
 	int32_t offset = ((x * Ax) + (y * Ay))/32;

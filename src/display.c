@@ -270,9 +270,9 @@ static void refresh(void)
 	uint32_t tilt = accelData[1] * accelData[1] + accelData[3] * accelData[3];
 	uint32_t mag = tilt + accelData[5] * accelData[5];
 	const uint32_t mag_typical = 0x40*0x40;	// x^2 + y^2 + z^2 == g^2
-	const uint32_t mag_epsilion = (mag_typical+25) / 50;	// 2% error
+	const uint32_t mag_epsilion = (mag_typical+10) / 20;	// 5% error
 
-	const uint32_t tilt_limit = (0x40 * 0x40)*(25 * 25)/10000;
+	const uint32_t tilt_limit = (mag)*(10 * 10)/10000;
 
 	if ( tilt < tilt_limit ||  !((mag_typical - mag_epsilion) < mag && mag < (mag_typical + mag_epsilion)) || wavePhase[0] != 0) {
 		// mostly flat
@@ -353,7 +353,7 @@ static void animateLEDs(int x, int y, uint8_t *c)
 	int8_t Ay = accelData[3];
 	//int8_t Az = accelData[5];
 
-	int32_t offset = ((x * Ax) + (y * Ay))/64;
+	int32_t offset = ((x * Ax) + (y * Ay))/32;
 	if (offset > 127) {
 		offset = 127;
 	} else if (offset < -127) {
